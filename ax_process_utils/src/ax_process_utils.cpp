@@ -25,6 +25,7 @@ namespace axion::process {
 
 static cpu_set_t g_small_cpu_set;
 static cpu_set_t g_big_cpu_set;
+static cpu_set_t g_all_cpu_set;
 static std::once_flag g_cpu_sets_initialized;
 
 bool ParseCpuset(const std::string& cpus, cpu_set_t* cpu_set) {
@@ -40,30 +41,31 @@ bool ParseCpuset(const std::string& cpus, cpu_set_t* cpu_set) {
 
         int matched = sscanf(token, "%u-%u", &start, &end);
         if (matched <= 0) break;
-
         if (matched == 1) end = start;
+
         if (start >= CPU_SETSIZE) {
             ALOGE("Ignoring CPU %u (>= CPU_SETSIZE)", start);
             continue;
         }
         if (end >= CPU_SETSIZE) end = CPU_SETSIZE - 1;
 
-        for (unsigned int i = start; i <= end; ++i) CPU_SET(i, cpu_set);
+        for (unsigned int i = start; i <= end; ++i)
+            CPU_SET(i, cpu_set);
 
         token = strchr(token, ',');
         if (!token) break;
         token++;
     }
-
     return true;
 }
 
 static void initialize_cpuset() {
     CPU_ZERO(&g_small_cpu_set);
     CPU_ZERO(&g_big_cpu_set);
+    CPU_ZERO(&g_all_cpu_set);
 
     std::string small_str = android::base::GetProperty("persist.sys.axion_cpu_small", "0,1,2,3");
-    std::string big_str = android::base::GetProperty("persist.sys.axion_cpu_big", "4,5,6,7");
+    std::string big_str   = android::base::GetProperty("persist.sys.axion_cpu_big", "4,5,6,7");
     std::string prime_str = android::base::GetProperty("persist.sys.axion_cpu_prime", "");
 
     if (!prime_str.empty()) {
@@ -73,38 +75,58 @@ static void initialize_cpuset() {
     ParseCpuset(small_str, &g_small_cpu_set);
     ParseCpuset(big_str, &g_big_cpu_set);
 
-    ALOGV("CPU sets initialized: small=[%s], big=[%s]", small_str.c_str(), big_str.c_str());
+    int max_cpus = sysconf(_SC_NPROCESSORS_ONLN);
+    for (int i = 0; i < max_cpus && i < CPU_SETSIZE; ++i)
+        CPU_SET(i, &g_all_cpu_set);
+
+    ALOGV("CPU sets initialized: small=[%s], big=[%s], total_cpus=%d",
+          small_str.c_str(), big_str.c_str(), max_cpus);
 }
 
 bool SetThreadAffinity(int tid, int group) {
     std::call_once(g_cpu_sets_initialized, initialize_cpuset);
 
-    cpu_set_t target_cpu_set;
-    CPU_ZERO(&target_cpu_set);
-
+    const cpu_set_t* target_cpu_set = nullptr;
+#if DEBUG_BUILD
     const char* group_name = nullptr;
+#endif
 
-    if (group == 1) {
-        target_cpu_set = g_small_cpu_set;
-        group_name = "small cores";
-    } else if (group == 0) {
-        target_cpu_set = g_big_cpu_set;
-        group_name = "big cores";
-    } else if (group == 2) {
-        int max_cpus = sysconf(_SC_NPROCESSORS_ONLN);
-        for (int i = 0; i < max_cpus; ++i) CPU_SET(i, &target_cpu_set);
-        group_name = "all cores";
-    } else {
-        ALOGE("Invalid CPU group %d for thread %d", group, tid);
+    switch (group) {
+        case 1:
+            target_cpu_set = &g_small_cpu_set;
+#if DEBUG_BUILD
+            group_name = "small cores";
+#endif
+            break;
+        case 0:
+            target_cpu_set = &g_big_cpu_set;
+#if DEBUG_BUILD
+            group_name = "big cores";
+#endif
+            break;
+        case 2:
+            target_cpu_set = &g_all_cpu_set;
+#if DEBUG_BUILD
+            group_name = "all cores";
+#endif
+            break;
+        default:
+            ALOGE("Invalid CPU group %d for thread %d", group, tid);
+            return false;
+    }
+
+    if (sched_setaffinity(tid, sizeof(cpu_set_t), target_cpu_set) == -1) {
+        ALOGE("Failed to set CPU affinity for thread %d: %s",
+              tid, strerror(errno));
         return false;
     }
 
-    if (sched_setaffinity(tid, sizeof(cpu_set_t), &target_cpu_set) == -1) {
-        ALOGE("Failed to set CPU affinity for thread %d to %s: %s", tid, group_name, strerror(errno));
-        return false;
-    }
-
+#if DEBUG_BUILD
     ALOGV("Successfully set affinity for thread %d to %s", tid, group_name);
+#else
+    (void)group;
+#endif
+
     return true;
 }
 
