@@ -1,0 +1,10 @@
+#pragma once
+#include <sched.h>
+#include <string>
+
+namespace axion::process {
+
+bool ParseCpuset(const std::string& cpus, cpu_set_t* cpu_set);
+bool SetThreadAffinity(int tid, int group);
+
+} // namespace axion::process

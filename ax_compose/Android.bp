@@ -1,0 +1,25 @@
+package {
+    default_visibility: ["//visibility:public"],
+}
+
+java_library {
+    name: "ax_compose",
+
+    srcs: ["ax_compose/src/**/*.kt"],
+
+    sdk_version: "system_current",
+
+    static_libs: [
+        "androidx.compose.runtime_runtime",
+        "androidx.compose.ui_ui",
+        "androidx.compose.foundation_foundation",
+        "androidx.compose.material3_material3",
+    ],
+
+    kotlincflags: [
+        "-Xjvm-default=all",
+        "-opt-in=kotlin.RequiresOptIn",
+    ],
+
+    visibility: ["//visibility:public"],
+}

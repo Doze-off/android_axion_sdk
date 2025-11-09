@@ -1,0 +1,18 @@
+package {
+    default_visibility: ["//visibility:public"],
+}
+
+java_library {
+    name: "ax_kt",
+
+    srcs: ["ax_kt/src/**/*.kt"],
+
+    sdk_version: "system_current",
+
+    kotlincflags: [
+        "-Xjvm-default=all",
+        "-opt-in=kotlin.RequiresOptIn",
+    ],
+
+    visibility: ["//visibility:public"],
+}
