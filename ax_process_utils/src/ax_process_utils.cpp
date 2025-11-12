@@ -130,4 +130,68 @@ bool SetThreadAffinity(int tid, int group) {
     return true;
 }
 
+bool SetThreadAffinity(int tid, int group, int length /* = 0 */) {
+    std::call_once(g_cpu_sets_initialized, initialize_cpuset);
+
+    const cpu_set_t* source_set = nullptr;
+    cpu_set_t target_set;
+    CPU_ZERO(&target_set);
+
+#if DEBUG_BUILD
+    const char* group_name = nullptr;
+#endif
+
+    switch (group) {
+        case 0: 
+            source_set = &g_big_cpu_set;
+#if DEBUG_BUILD
+            group_name = "big cores";
+#endif
+            break;
+        case 1:
+            source_set = &g_small_cpu_set;
+#if DEBUG_BUILD
+            group_name = "small cores";
+#endif
+            break;
+        case 2:
+            source_set = &g_all_cpu_set;
+#if DEBUG_BUILD
+            group_name = "all cores";
+#endif
+            break;
+        default:
+            ALOGE("Invalid CPU group %d for thread %d", group, tid);
+            return false;
+    }
+
+    if (length <= 0) {
+        target_set = *source_set;
+    } else {
+        int count = 0;
+        for (int i = 0; i < CPU_SETSIZE; ++i) {
+            if (CPU_ISSET(i, source_set)) {
+                CPU_SET(i, &target_set);
+                count++;
+                if (count >= length) break;
+            }
+        }
+        if (count == 0) {
+            ALOGE("No CPUs available for group %d (tid=%d)", group, tid);
+            return false;
+        }
+    }
+
+    if (sched_setaffinity(tid, sizeof(cpu_set_t), &target_set) == -1) {
+        ALOGE("Failed to set CPU affinity for thread %d: %s", tid, strerror(errno));
+        return false;
+    }
+
+#if DEBUG_BUILD
+    ALOGV("Set affinity for thread %d to group=%d (%s) with length=%d",
+          tid, group, group_name, length);
+#endif
+
+    return true;
+}
 } // namespace axion::process
