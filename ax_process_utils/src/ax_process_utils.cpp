@@ -2,6 +2,7 @@
 
 #include <android-base/properties.h>
 #include <android/log.h>
+#include <dirent.h>
 #include <errno.h>
 #include <string.h>
 #include <sys/sysinfo.h>
@@ -83,115 +84,138 @@ static void initialize_cpuset() {
           small_str.c_str(), big_str.c_str(), max_cpus);
 }
 
-bool SetThreadAffinity(int tid, int group) {
-    std::call_once(g_cpu_sets_initialized, initialize_cpuset);
-
-    const cpu_set_t* target_cpu_set = nullptr;
-#if DEBUG_BUILD
-    const char* group_name = nullptr;
-#endif
-
+static const cpu_set_t* get_target_cpuset(int group) {
+    const cpu_set_t* target = nullptr;
+    
     switch (group) {
-        case 1:
-            target_cpu_set = &g_small_cpu_set;
-#if DEBUG_BUILD
-            group_name = "small cores";
-#endif
-            break;
         case 0:
-            target_cpu_set = &g_big_cpu_set;
-#if DEBUG_BUILD
-            group_name = "big cores";
-#endif
+            target = &g_big_cpu_set;
+            break;
+        case 1:
+            target = &g_small_cpu_set;
             break;
         case 2:
-            target_cpu_set = &g_all_cpu_set;
-#if DEBUG_BUILD
-            group_name = "all cores";
-#endif
+            target = &g_all_cpu_set;
             break;
         default:
-            ALOGE("Invalid CPU group %d for thread %d", group, tid);
-            return false;
+            return nullptr;
     }
-
-    if (sched_setaffinity(tid, sizeof(cpu_set_t), target_cpu_set) == -1) {
-        ALOGE("Failed to set CPU affinity for thread %d: %s",
-              tid, strerror(errno));
-        return false;
-    }
-
-#if DEBUG_BUILD
-    ALOGV("Successfully set affinity for thread %d to %s", tid, group_name);
-#else
-    (void)group;
-#endif
-
-    return true;
+    
+    return target;
 }
 
-bool SetThreadAffinity(int tid, int group, int length /* = 0 */) {
-    std::call_once(g_cpu_sets_initialized, initialize_cpuset);
-
-    const cpu_set_t* source_set = nullptr;
-    cpu_set_t target_set;
-    CPU_ZERO(&target_set);
-
-#if DEBUG_BUILD
-    const char* group_name = nullptr;
-#endif
-
-    switch (group) {
-        case 0: 
-            source_set = &g_big_cpu_set;
-#if DEBUG_BUILD
-            group_name = "big cores";
-#endif
-            break;
-        case 1:
-            source_set = &g_small_cpu_set;
-#if DEBUG_BUILD
-            group_name = "small cores";
-#endif
-            break;
-        case 2:
-            source_set = &g_all_cpu_set;
-#if DEBUG_BUILD
-            group_name = "all cores";
-#endif
-            break;
-        default:
-            ALOGE("Invalid CPU group %d for thread %d", group, tid);
-            return false;
-    }
-
+static bool build_cpuset(const cpu_set_t* source, cpu_set_t* target, int length) {
+    CPU_ZERO(target);
+    
     if (length <= 0) {
-        target_set = *source_set;
-    } else {
-        int count = 0;
-        for (int i = 0; i < CPU_SETSIZE; ++i) {
-            if (CPU_ISSET(i, source_set)) {
-                CPU_SET(i, &target_set);
-                count++;
-                if (count >= length) break;
-            }
-        }
-        if (count == 0) {
-            ALOGE("No CPUs available for group %d (tid=%d)", group, tid);
-            return false;
+        *target = *source;
+        return true;
+    }
+    
+    int count = 0;
+    for (int i = 0; i < CPU_SETSIZE; ++i) {
+        if (CPU_ISSET(i, source)) {
+            CPU_SET(i, target);
+            count++;
+            if (count >= length) break;
         }
     }
+    
+    return count > 0;
+}
 
-    if (sched_setaffinity(tid, sizeof(cpu_set_t), &target_set) == -1) {
+static bool set_thread_affinity(int tid, const cpu_set_t* cpu_set) {
+    if (sched_setaffinity(tid, sizeof(cpu_set_t), cpu_set) == -1) {
         ALOGE("Failed to set CPU affinity for thread %d: %s", tid, strerror(errno));
         return false;
     }
-
-#if DEBUG_BUILD
-    ALOGV("Set affinity for thread %d to group=%d (%s) with length=%d",
-          tid, group, group_name, length);
-#endif
-
     return true;
 }
+
+static bool set_process_affinity(int pid, const cpu_set_t* cpu_set) {
+    char task_path[64];
+    snprintf(task_path, sizeof(task_path), "/proc/%d/task", pid);
+    DIR* task_dir = opendir(task_path);
+    
+    if (task_dir == nullptr) {
+        return set_thread_affinity(pid, cpu_set);
+    }
+    
+    bool success = true;
+    struct dirent* entry;
+    
+    while ((entry = readdir(task_dir)) != nullptr) {
+        if (entry->d_name[0] == '.') continue;
+        
+        int thread_id = atoi(entry->d_name);
+        if (thread_id > 0) {
+            if (!set_thread_affinity(thread_id, cpu_set)) {
+                success = false;
+            }
+#if DEBUG_BUILD
+            else {
+                ALOGV("Set affinity for thread %d in process %d", thread_id, pid);
+            }
+#endif
+        }
+    }
+    
+    closedir(task_dir);
+    
+#if DEBUG_BUILD
+    if (success) {
+        ALOGV("Successfully set affinity for all threads in process %d", pid);
+    }
+#endif
+    
+    return success;
+}
+
+bool SetThreadAffinity(int tid, int group) {
+    std::call_once(g_cpu_sets_initialized, initialize_cpuset);
+    
+    const cpu_set_t* target_cpu_set = get_target_cpuset(group);
+    if (!target_cpu_set) return false;
+    
+    bool result = set_process_affinity(tid, target_cpu_set);
+    
+#if DEBUG_BUILD
+    if (result) {
+        const char* group_name = (group == 0) ? "big cores" : 
+                                 (group == 1) ? "small cores" : "all cores";
+        ALOGV("Successfully set affinity for thread/process %d to %s", tid, group_name);
+    }
+#else
+    (void)group;
+#endif
+    
+    return result;
+}
+
+bool SetThreadAffinity(int tid, int group, int length) {
+    std::call_once(g_cpu_sets_initialized, initialize_cpuset);
+    
+    const cpu_set_t* source_set = get_target_cpuset(group);
+    if (!source_set) return false;
+    
+    cpu_set_t target_set;
+    if (!build_cpuset(source_set, &target_set, length)) {
+        ALOGE("No CPUs available for group %d (tid=%d)", group, tid);
+        return false;
+    }
+    
+    bool result = set_process_affinity(tid, &target_set);
+    
+#if DEBUG_BUILD
+    if (result) {
+        const char* group_name = (group == 0) ? "big cores" : 
+                                 (group == 1) ? "small cores" : "all cores";
+        ALOGV("Set affinity for thread/process %d to group=%d (%s) with length=%d",
+              tid, group, group_name, length);
+    }
+#endif
+    
+    return result;
+}
+
 } // namespace axion::process
