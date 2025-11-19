@@ -27,6 +27,7 @@ namespace axion::process {
 static cpu_set_t g_small_cpu_set;
 static cpu_set_t g_big_cpu_set;
 static cpu_set_t g_all_cpu_set;
+static cpu_set_t g_balanced_cpu_set;
 static std::once_flag g_cpu_sets_initialized;
 
 bool ParseCpuset(const std::string& cpus, cpu_set_t* cpu_set) {
@@ -46,6 +47,7 @@ bool ParseCpuset(const std::string& cpus, cpu_set_t* cpu_set) {
 
         if (start >= CPU_SETSIZE) {
             ALOGE("Ignoring CPU %u (>= CPU_SETSIZE)", start);
+            while (*token && *token != ',') token++;
             continue;
         }
         if (end >= CPU_SETSIZE) end = CPU_SETSIZE - 1;
@@ -53,9 +55,8 @@ bool ParseCpuset(const std::string& cpus, cpu_set_t* cpu_set) {
         for (unsigned int i = start; i <= end; ++i)
             CPU_SET(i, cpu_set);
 
-        token = strchr(token, ',');
-        if (!token) break;
-        token++;
+        while (*token && *token != ',') token++;
+        if (*token == ',') token++;
     }
     return true;
 }
@@ -64,6 +65,7 @@ static void initialize_cpuset() {
     CPU_ZERO(&g_small_cpu_set);
     CPU_ZERO(&g_big_cpu_set);
     CPU_ZERO(&g_all_cpu_set);
+    CPU_ZERO(&g_balanced_cpu_set);
 
     std::string small_str = android::base::GetProperty("persist.sys.axion_cpu_small", "0,1,2,3");
     std::string big_str   = android::base::GetProperty("persist.sys.axion_cpu_big", "4,5,6,7");
@@ -80,8 +82,46 @@ static void initialize_cpuset() {
     for (int i = 0; i < max_cpus && i < CPU_SETSIZE; ++i)
         CPU_SET(i, &g_all_cpu_set);
 
-    ALOGV("CPU sets initialized: small=[%s], big=[%s], total_cpus=%d",
-          small_str.c_str(), big_str.c_str(), max_cpus);
+    int small_count = 0;
+    int big_count = 0;
+    
+    for (int i = 0; i < CPU_SETSIZE; ++i) {
+        if (CPU_ISSET(i, &g_small_cpu_set)) small_count++;
+        if (CPU_ISSET(i, &g_big_cpu_set)) big_count++;
+    }
+    
+    int small_to_include = (small_count + 1) / 2;
+    int big_to_include = (big_count + 1) / 2;
+    
+    if (small_count > 0 && small_to_include == 0) small_to_include = 1;
+    if (big_count > 0 && big_to_include == 0) big_to_include = 1;
+    
+    int added = 0;
+    for (int i = 0; i < CPU_SETSIZE && added < small_to_include; ++i) {
+        if (CPU_ISSET(i, &g_small_cpu_set)) {
+            CPU_SET(i, &g_balanced_cpu_set);
+            added++;
+        }
+    }
+    
+    added = 0;
+    for (int i = 0; i < CPU_SETSIZE && added < big_to_include; ++i) {
+        if (CPU_ISSET(i, &g_big_cpu_set)) {
+            CPU_SET(i, &g_balanced_cpu_set);
+            added++;
+        }
+    }
+    
+    int balanced_count = 0;
+    for (int i = 0; i < CPU_SETSIZE; ++i) {
+        if (CPU_ISSET(i, &g_balanced_cpu_set)) balanced_count++;
+    }
+    if (balanced_count == 0) {
+        g_balanced_cpu_set = g_all_cpu_set;
+    }
+
+    ALOGV("CPU sets initialized: small=[%s](%d cores), big=[%s](%d cores), balanced=(%d cores), total_cpus=%d",
+          small_str.c_str(), small_count, big_str.c_str(), big_count, balanced_count, max_cpus);
 }
 
 static const cpu_set_t* get_target_cpuset(int group) {
@@ -96,6 +136,9 @@ static const cpu_set_t* get_target_cpuset(int group) {
             break;
         case 2:
             target = &g_all_cpu_set;
+            break;
+        case 3:
+            target = &g_balanced_cpu_set;
             break;
         default:
             return nullptr;
@@ -132,7 +175,31 @@ static bool set_thread_affinity(int tid, const cpu_set_t* cpu_set) {
     return true;
 }
 
+static bool is_process_id(int tid) {
+    char path[64];
+    snprintf(path, sizeof(path), "/proc/%d/status", tid);
+    FILE* f = fopen(path, "r");
+    if (!f) return false;
+    
+    char line[256];
+    int pid = -1, tgid = -1;
+    while (fgets(line, sizeof(line), f)) {
+        if (sscanf(line, "Pid:\t%d", &pid) == 1) continue;
+        if (sscanf(line, "Tgid:\t%d", &tgid) == 1) break;
+    }
+    fclose(f);
+    
+    return (pid > 0 && tgid > 0 && pid == tgid);
+}
+
 static bool set_process_affinity(int pid, const cpu_set_t* cpu_set) {
+    if (!is_process_id(pid)) {
+        ALOGV("ID %d is a thread ID, setting affinity for single thread only", pid);
+        return set_thread_affinity(pid, cpu_set);
+    }
+    
+    ALOGV("ID %d is a process ID, setting affinity for all threads", pid);
+    
     char task_path[64];
     snprintf(task_path, sizeof(task_path), "/proc/%d/task", pid);
     DIR* task_dir = opendir(task_path);
@@ -182,7 +249,9 @@ bool SetThreadAffinity(int tid, int group) {
 #if DEBUG_BUILD
     if (result) {
         const char* group_name = (group == 0) ? "big cores" : 
-                                 (group == 1) ? "small cores" : "all cores";
+                                 (group == 1) ? "small cores" : 
+                                 (group == 2) ? "all cores" : 
+                                 (group == 3) ? "balanced cores" : "unknown";
         ALOGV("Successfully set affinity for thread/process %d to %s", tid, group_name);
     }
 #else
@@ -209,7 +278,9 @@ bool SetThreadAffinity(int tid, int group, int length) {
 #if DEBUG_BUILD
     if (result) {
         const char* group_name = (group == 0) ? "big cores" : 
-                                 (group == 1) ? "small cores" : "all cores";
+                                 (group == 1) ? "small cores" : 
+                                 (group == 2) ? "all cores" : 
+                                 (group == 3) ? "balanced cores" : "unknown";
         ALOGV("Set affinity for thread/process %d to group=%d (%s) with length=%d",
               tid, group, group_name, length);
     }
