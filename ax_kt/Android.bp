@@ -2,17 +2,26 @@ package {
     default_visibility: ["//visibility:public"],
 }
 
-java_library {
+android_library {
     name: "ax_kt",
+    manifest: "AndroidManifest.xml",
 
-    srcs: ["ax_kt/src/**/*.kt"],
+    srcs: [
+        "src/**/*.kt",
+    ],
 
-    sdk_version: "system_current",
+    static_libs: [
+        "androidx.core_core-ktx",
+        "kotlin-stdlib",
+        "kotlinx-coroutines-android",
+        "kotlinx-coroutines-core",
+    ],
 
     kotlincflags: [
         "-Xjvm-default=all",
-        "-opt-in=kotlin.RequiresOptIn",
+        "-P plugin:androidx.compose.compiler.plugins.kotlin:sourceInformation=true",
     ],
-
+    use_resource_processor: true,
+    
     visibility: ["//visibility:public"],
 }
