@@ -2,6 +2,7 @@ package com.android.axion.kotlin.math
 
 import android.content.Context
 import kotlin.math.min
+import kotlin.math.roundToInt
 
 fun lerp(start: Float, stop: Float, fraction: Float): Float {
     return start + fraction * (stop - start)
@@ -40,3 +41,7 @@ fun Context.dpToPxF(dp: Int): Float =
 
 fun Context.dpToPxF(dp: Float): Float =
     dp * resources.displayMetrics.density
+
+fun dpToPx(dp: Int, densityDpi: Int): Int =
+    (dp * (densityDpi / 160f)).roundToInt()
+
