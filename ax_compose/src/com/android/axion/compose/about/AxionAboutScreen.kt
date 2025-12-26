@@ -71,7 +71,7 @@ fun AxionAboutScreen(
         } catch (e: Exception) { null }
     }
     
-    val cardColor = MaterialTheme.colorScheme.surface
+    val cardColor = MaterialTheme.colorScheme.surfaceBright
     
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
@@ -95,7 +95,7 @@ fun AxionAboutScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
+                .background(MaterialTheme.colorScheme.surfaceContainer)
                 .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
         ) {
@@ -198,7 +198,7 @@ private fun ImmersiveHeroBanner(
             .padding(horizontal = 16.dp)
             .height(280.dp),
         shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright)
     ) {
         Box(
             modifier = Modifier
@@ -347,7 +347,7 @@ private fun DeviceInfoCard(
     val tertiaryColor = MaterialTheme.colorScheme.tertiary
     val onSurface = MaterialTheme.colorScheme.onSurface
     val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
-    val cardColor = MaterialTheme.colorScheme.surface
+    val cardColor = MaterialTheme.colorScheme.surfaceBright
     
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -548,7 +548,7 @@ private fun SpecsList(
     battery: String,
     modifier: Modifier = Modifier
 ) {
-    val cardColor = MaterialTheme.colorScheme.surface
+    val cardColor = MaterialTheme.colorScheme.surfaceBright
     
     Card(
         modifier = modifier.fillMaxWidth(),
@@ -607,10 +607,10 @@ private fun NavigationCard(
     ) {
         Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(
-                Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)),
+                Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.primaryContainer),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(icon, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(26.dp))
+                Icon(icon, null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(26.dp))
             }
             Spacer(Modifier.width(16.dp))
             Column(Modifier.weight(1f)) {

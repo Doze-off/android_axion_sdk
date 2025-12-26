@@ -26,7 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.res.colorResource
+
 import androidx.core.view.WindowCompat
 
 @Composable
@@ -35,15 +35,10 @@ fun AxionTheme(
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
-    val colorScheme = if (darkTheme) {
-        dynamicDarkColorScheme(context).copy(
-            background = colorResource(id = android.R.color.system_neutral1_1000)
-        )
-    } else {
-        dynamicLightColorScheme(context).copy(
-            background = colorResource(id = android.R.color.system_neutral1_50)
-        )
-    }
+    val baseScheme = if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    val colorScheme = baseScheme.copy(
+        background = baseScheme.surfaceContainer
+    )
     
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -70,10 +65,13 @@ object AxionColors {
         @Composable get() = MaterialTheme.colorScheme.tertiaryContainer
     
     val cardBackground: Color
-        @Composable get() = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        @Composable get() = MaterialTheme.colorScheme.surfaceBright
+    
+    val cardBackgroundHigher: Color
+        @Composable get() = MaterialTheme.colorScheme.surfaceContainerHigh
     
     val glassSurface: Color
-        @Composable get() = MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)
+        @Composable get() = MaterialTheme.colorScheme.surfaceContainer
     
     val accentGlow: Color
         @Composable get() = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
