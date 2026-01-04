@@ -125,10 +125,11 @@ object DeviceInfoProvider {
     }
 
     fun getTotalRam(): String {
+        /* TODO: Fix wrong calculation
         val ramProp = SystemProperties.get("persist.sys.device_ram_size", "")
         if (ramProp.isNotEmpty()) {
             return "$ramProp GB"
-        }
+        */
         
         val memInfoReader = MemInfoReader()
         memInfoReader.readMemInfo()
