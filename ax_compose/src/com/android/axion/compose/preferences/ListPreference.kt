@@ -107,6 +107,61 @@ fun SecureListPreference(
 }
 
 @Composable
+fun ListPreference(
+    title: String,
+    summary: String? = null,
+    options: List<Pair<String, String>>,
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    position: PreferencePosition = LocalPreferencePosition.current
+) {
+    var showDialog by remember { mutableStateOf(false) }
+    val shape = preferenceShape(position)
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(shape)
+            .background(MaterialTheme.colorScheme.surfaceBright)
+            .clickable(enabled = enabled) { showDialog = true }
+            .padding(horizontal = 16.dp, vertical = 16.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = if (enabled) MaterialTheme.colorScheme.onSurface 
+                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+            )
+            if (summary != null) {
+                Text(
+                    text = summary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant 
+                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+                )
+            }
+        }
+    }
+
+    if (showDialog && enabled) {
+        ListPreferenceDialog(
+            title = title,
+            options = options,
+            selectedKey = value,
+            onOptionSelected = { newValue ->
+                onValueChange(newValue)
+                showDialog = false
+            },
+            onDismiss = { showDialog = false }
+        )
+    }
+}
+
+@Composable
 private fun ListPreferenceDialog(
     title: String,
     options: List<Pair<String, String>>,
