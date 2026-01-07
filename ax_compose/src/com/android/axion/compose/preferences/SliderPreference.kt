@@ -82,7 +82,7 @@ fun SliderPreference(
         modifier = modifier
             .fillMaxWidth()
             .clip(shape)
-            .background(MaterialTheme.colorScheme.surface)
+            .background(MaterialTheme.colorScheme.surfaceBright)
             .alpha(if (enabled) 1f else 0.5f)
             .padding(horizontal = 20.dp, vertical = 16.dp)
     ) {
