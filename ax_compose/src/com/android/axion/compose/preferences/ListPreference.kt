@@ -16,36 +16,20 @@
 
 package com.android.axion.compose.preferences
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.*
+import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.*
+import androidx.compose.ui.draw.*
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
@@ -172,88 +156,184 @@ private fun ListPreferenceDialog(
     onOptionSelected: (String) -> Unit,
     onDismiss: () -> Unit
 ) {
+    val scrollState = rememberScrollState()
+    val canScrollUp by remember { derivedStateOf { scrollState.value > 0 } }
+    val canScrollDown by remember { derivedStateOf { scrollState.value < scrollState.maxValue } }
+    val isScrollable by remember { derivedStateOf { scrollState.maxValue > 0 } }
+
+    val topFadeAlpha by animateFloatAsState(
+        targetValue = if (canScrollUp) 1f else 0f,
+        animationSpec = tween(durationMillis = 200),
+        label = "topFade"
+    )
+    val bottomFadeAlpha by animateFloatAsState(
+        targetValue = if (canScrollDown) 1f else 0f,
+        animationSpec = tween(durationMillis = 200),
+        label = "bottomFade"
+    )
+
+    val fadeColor = MaterialTheme.colorScheme.surfaceContainerHigh
+
     Dialog(onDismissRequest = onDismiss) {
         Column(
             modifier = Modifier
+                .widthIn(max = 400.dp)
                 .fillMaxWidth()
                 .clip(ExpressiveShapes.extraLarge)
                 .background(MaterialTheme.colorScheme.surfaceContainerHigh)
                 .padding(24.dp)
         ) {
-            
             Text(
                 text = title,
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.onSurface
             )
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            
-            Column(
+
+            Spacer(modifier = Modifier.height(16.dp))
+
+            if (isScrollable) {
+                ScrollIndicatorHint(
+                    iconUp = true,
+                    visible = canScrollUp,
+                    fadeColor = fadeColor
+                )
+            }
+
+            Box(
                 modifier = Modifier
+                    .fillMaxWidth()
                     .heightIn(max = 300.dp)
-                    .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                options.forEach { (key, label) ->
-                    val isSelected = selectedKey == key
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(
-                                if (isSelected) MaterialTheme.colorScheme.primaryContainer
-                                else MaterialTheme.colorScheme.surfaceContainer
-                            )
-                            .clickable { onOptionSelected(key) }
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        
-                        Box(
-                            modifier = Modifier
-                                .size(24.dp)
-                                .clip(CircleShape)
-                                .background(
-                                    if (isSelected) MaterialTheme.colorScheme.primary
-                                    else Color.Transparent
-                                )
-                                .border(
-                                    width = 2.dp,
-                                    color = if (isSelected) MaterialTheme.colorScheme.primary
-                                            else MaterialTheme.colorScheme.outline,
-                                    shape = CircleShape
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(scrollState)
+                        .drawWithContent {
+                            drawContent()
+                            val fadeHeight = 24.dp.toPx()
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(fadeColor, Color.Transparent),
+                                    startY = 0f,
+                                    endY = fadeHeight
                                 ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (isSelected) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(10.dp)
-                                        .clip(CircleShape)
-                                        .background(MaterialTheme.colorScheme.onPrimary)
+                                alpha = topFadeAlpha
+                            )
+                            drawRect(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(Color.Transparent, fadeColor),
+                                    startY = size.height - fadeHeight,
+                                    endY = size.height
+                                ),
+                                alpha = bottomFadeAlpha
+                            )
+                        },
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    options.forEach { (key, label) ->
+                        val isSelected = selectedKey == key
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(
+                                    if (isSelected) MaterialTheme.colorScheme.primaryContainer
+                                    else MaterialTheme.colorScheme.surfaceContainer
                                 )
+                                .clickable { onOptionSelected(key) }
+                                .padding(horizontal = 16.dp, vertical = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(24.dp)
+                                    .clip(CircleShape)
+                                    .background(
+                                        if (isSelected) MaterialTheme.colorScheme.primary
+                                        else Color.Transparent
+                                    )
+                                    .border(
+                                        width = 2.dp,
+                                        color = if (isSelected) MaterialTheme.colorScheme.primary
+                                                else MaterialTheme.colorScheme.outline,
+                                        shape = CircleShape
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                if (isSelected) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(10.dp)
+                                            .clip(CircleShape)
+                                            .background(MaterialTheme.colorScheme.onPrimary)
+                                    )
+                                }
                             }
+
+                            Spacer(modifier = Modifier.width(16.dp))
+
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
+                                color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
+                                        else MaterialTheme.colorScheme.onSurface
+                            )
                         }
-                        
-                        Spacer(modifier = Modifier.width(16.dp))
-                        
-                        Text(
-                            text = label,
-                            style = MaterialTheme.typography.bodyLarge,
-                            fontWeight = if (isSelected) FontWeight.Medium else FontWeight.Normal,
-                            color = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer
-                                    else MaterialTheme.colorScheme.onSurface
-                        )
                     }
                 }
+
+                if (isScrollable) {
+                    val scrollbarColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f)
+                    val trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.CenterEnd)
+                            .padding(end = 2.dp)
+                            .width(4.dp)
+                            .fillMaxHeight()
+                            .clip(RoundedCornerShape(2.dp))
+                            .drawBehind {
+                                drawRoundRect(
+                                    color = trackColor,
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx())
+                                )
+
+                                val viewportHeight = size.height
+                                val totalContentHeight = scrollState.maxValue + viewportHeight
+                                val thumbHeight = (viewportHeight / totalContentHeight) * viewportHeight
+                                val minThumbHeight = 24.dp.toPx()
+                                val actualThumbHeight = thumbHeight.coerceAtLeast(minThumbHeight)
+
+                                val scrollRange = viewportHeight - actualThumbHeight
+                                val scrollProgress = if (scrollState.maxValue > 0) {
+                                    scrollState.value.toFloat() / scrollState.maxValue.toFloat()
+                                } else 0f
+                                val thumbOffset = scrollProgress * scrollRange
+
+                                drawRoundRect(
+                                    color = scrollbarColor,
+                                    topLeft = Offset(0f, thumbOffset),
+                                    size = Size(size.width, actualThumbHeight),
+                                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(2.dp.toPx())
+                                )
+                            }
+                    )
+                }
             }
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            
+
+            if (isScrollable) {
+                ScrollIndicatorHint(
+                    iconUp = false,
+                    visible = canScrollDown,
+                    fadeColor = fadeColor
+                )
+            }
+
+            Spacer(modifier = Modifier.height(16.dp))
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End
@@ -267,5 +347,50 @@ private fun ListPreferenceDialog(
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun ScrollIndicatorHint(
+    iconUp: Boolean,
+    visible: Boolean,
+    fadeColor: Color
+) {
+    val alpha by animateFloatAsState(
+        targetValue = if (visible) 1f else 0.3f,
+        animationSpec = tween(durationMillis = 200),
+        label = "indicatorAlpha"
+    )
+
+    val infiniteTransition = rememberInfiniteTransition(label = "bounce")
+    val bounceOffset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = if (visible) 3f else 0f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(600, easing = FastOutSlowInEasing),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "bounceOffset"
+    )
+
+    Box(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(20.dp)
+            .graphicsLayer {
+                this.alpha = alpha
+                translationY = if (iconUp) -bounceOffset else bounceOffset
+            },
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = 24.dp, height = 4.dp)
+                .clip(RoundedCornerShape(2.dp))
+                .background(
+                    if (visible) MaterialTheme.colorScheme.primary.copy(alpha = 0.6f)
+                    else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                )
+        )
     }
 }
