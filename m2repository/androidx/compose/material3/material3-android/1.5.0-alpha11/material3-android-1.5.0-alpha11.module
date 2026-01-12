@@ -1,0 +1,351 @@
+{
+  "formatVersion": "1.1",
+  "component": {
+    "url": "../../material3/1.5.0-alpha11/material3-1.5.0-alpha11.module",
+    "group": "androidx.compose.material3",
+    "module": "material3",
+    "version": "1.5.0-alpha11",
+    "attributes": {
+      "org.gradle.status": "release"
+    }
+  },
+  "createdBy": {
+    "gradle": {
+      "version": "9.2.1",
+      "buildId:": "14574256"
+    }
+  },
+  "variants": [
+    {
+      "name": "androidApiElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "android",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-api",
+        "org.jetbrains.kotlin.platform.type": "androidJvm"
+      },
+      "dependencies": [
+        {
+          "group": "androidx.annotation",
+          "module": "annotation",
+          "version": {
+            "requires": "1.8.1"
+          }
+        },
+        {
+          "group": "androidx.annotation",
+          "module": "annotation-experimental",
+          "version": {
+            "requires": "1.4.1"
+          }
+        },
+        {
+          "group": "androidx.compose.foundation",
+          "module": "foundation",
+          "version": {
+            "requires": "1.8.1"
+          }
+        },
+        {
+          "group": "androidx.compose.foundation",
+          "module": "foundation-layout",
+          "version": {
+            "requires": "1.8.1"
+          }
+        },
+        {
+          "group": "androidx.compose.material",
+          "module": "material-ripple",
+          "version": {
+            "requires": "1.8.1"
+          }
+        },
+        {
+          "group": "androidx.compose.runtime",
+          "module": "runtime",
+          "version": {
+            "requires": "1.9.0-rc01"
+          }
+        },
+        {
+          "group": "androidx.compose.ui",
+          "module": "ui",
+          "version": {
+            "requires": "1.8.2"
+          }
+        },
+        {
+          "group": "androidx.compose.ui",
+          "module": "ui-text",
+          "version": {
+            "requires": "1.8.1"
+          }
+        },
+        {
+          "group": "androidx.graphics",
+          "module": "graphics-shapes",
+          "version": {
+            "requires": "1.0.1"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.0.21"
+          }
+        }
+      ],
+      "dependencyConstraints": [
+        {
+          "group": "androidx.compose.material3",
+          "module": "material3-adaptive-navigation-suite",
+          "version": {
+            "requires": "1.5.0-alpha11"
+          },
+          "reason": "material3 is in atomic group androidx.compose.material3"
+        },
+        {
+          "group": "androidx.compose.material3",
+          "module": "material3-lint",
+          "version": {
+            "requires": "1.5.0-alpha11"
+          },
+          "reason": "material3 is in atomic group androidx.compose.material3"
+        },
+        {
+          "group": "androidx.compose.material3",
+          "module": "material3-window-size-class",
+          "version": {
+            "requires": "1.5.0-alpha11"
+          },
+          "reason": "material3 is in atomic group androidx.compose.material3"
+        }
+      ],
+      "files": [
+        {
+          "name": "material3.aar",
+          "url": "material3-android-1.5.0-alpha11.aar",
+          "size": 5292690,
+          "sha512": "7e0126cc2dca76fe3e18021cbb64b65560055b35274034e7906da963556a1df1d03031f35312265b2a46fb7376d4438c4a7832dafd4eabd5b72acd60fd585315",
+          "sha256": "988fdf441710910d3cd2ac8c7a7fe616f6cf0cbe165e83a482270f62a7a25b1b",
+          "sha1": "87e5bf7426107906a614ac5ba36cb98833cc86bc",
+          "md5": "b1fd214d85fa45056a4be8bbc2b98adb"
+        }
+      ]
+    },
+    {
+      "name": "androidRuntimeElements-published",
+      "attributes": {
+        "org.gradle.category": "library",
+        "org.gradle.jvm.environment": "android",
+        "org.gradle.libraryelements": "aar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "androidJvm"
+      },
+      "dependencies": [
+        {
+          "group": "androidx.activity",
+          "module": "activity-compose",
+          "version": {
+            "requires": "1.8.2"
+          }
+        },
+        {
+          "group": "androidx.annotation",
+          "module": "annotation",
+          "version": {
+            "requires": "1.8.1"
+          }
+        },
+        {
+          "group": "androidx.annotation",
+          "module": "annotation-experimental",
+          "version": {
+            "requires": "1.4.1"
+          }
+        },
+        {
+          "group": "androidx.collection",
+          "module": "collection",
+          "version": {
+            "requires": "1.4.5"
+          }
+        },
+        {
+          "group": "androidx.compose.animation",
+          "module": "animation-core",
+          "version": {
+            "requires": "1.8.1"
+          }
+        },
+        {
+          "group": "androidx.compose.foundation",
+          "module": "foundation",
+          "version": {
+            "requires": "1.8.1"
+          }
+        },
+        {
+          "group": "androidx.compose.foundation",
+          "module": "foundation-layout",
+          "version": {
+            "requires": "1.8.1"
+          }
+        },
+        {
+          "group": "androidx.compose.material",
+          "module": "material-ripple",
+          "version": {
+            "requires": "1.8.1"
+          }
+        },
+        {
+          "group": "androidx.compose.runtime",
+          "module": "runtime",
+          "version": {
+            "requires": "1.9.0-rc01"
+          }
+        },
+        {
+          "group": "androidx.compose.ui",
+          "module": "ui",
+          "version": {
+            "requires": "1.8.2"
+          }
+        },
+        {
+          "group": "androidx.compose.ui",
+          "module": "ui-text",
+          "version": {
+            "requires": "1.8.1"
+          }
+        },
+        {
+          "group": "androidx.compose.ui",
+          "module": "ui-util",
+          "version": {
+            "requires": "1.8.1"
+          }
+        },
+        {
+          "group": "androidx.graphics",
+          "module": "graphics-shapes",
+          "version": {
+            "requires": "1.0.1"
+          }
+        },
+        {
+          "group": "androidx.lifecycle",
+          "module": "lifecycle-common-java8",
+          "version": {
+            "requires": "2.6.1"
+          }
+        },
+        {
+          "group": "org.jetbrains.kotlin",
+          "module": "kotlin-stdlib",
+          "version": {
+            "requires": "2.0.21"
+          }
+        }
+      ],
+      "dependencyConstraints": [
+        {
+          "group": "androidx.compose.material3",
+          "module": "material3-adaptive-navigation-suite",
+          "version": {
+            "requires": "1.5.0-alpha11"
+          },
+          "reason": "material3 is in atomic group androidx.compose.material3"
+        },
+        {
+          "group": "androidx.compose.material3",
+          "module": "material3-lint",
+          "version": {
+            "requires": "1.5.0-alpha11"
+          },
+          "reason": "material3 is in atomic group androidx.compose.material3"
+        },
+        {
+          "group": "androidx.compose.material3",
+          "module": "material3-window-size-class",
+          "version": {
+            "requires": "1.5.0-alpha11"
+          },
+          "reason": "material3 is in atomic group androidx.compose.material3"
+        }
+      ],
+      "files": [
+        {
+          "name": "material3.aar",
+          "url": "material3-android-1.5.0-alpha11.aar",
+          "size": 5292690,
+          "sha512": "7e0126cc2dca76fe3e18021cbb64b65560055b35274034e7906da963556a1df1d03031f35312265b2a46fb7376d4438c4a7832dafd4eabd5b72acd60fd585315",
+          "sha256": "988fdf441710910d3cd2ac8c7a7fe616f6cf0cbe165e83a482270f62a7a25b1b",
+          "sha1": "87e5bf7426107906a614ac5ba36cb98833cc86bc",
+          "md5": "b1fd214d85fa45056a4be8bbc2b98adb"
+        }
+      ]
+    },
+    {
+      "name": "androidSourcesElements-published",
+      "attributes": {
+        "org.gradle.category": "documentation",
+        "org.gradle.dependency.bundling": "external",
+        "org.gradle.docstype": "sources",
+        "org.gradle.jvm.environment": "android",
+        "org.gradle.libraryelements": "jar",
+        "org.gradle.usage": "java-runtime",
+        "org.jetbrains.kotlin.platform.type": "androidJvm"
+      },
+      "dependencyConstraints": [
+        {
+          "group": "androidx.compose.material3",
+          "module": "material3-adaptive-navigation-suite",
+          "version": {
+            "requires": "1.5.0-alpha11"
+          },
+          "reason": "material3 is in atomic group androidx.compose.material3"
+        },
+        {
+          "group": "androidx.compose.material3",
+          "module": "material3-lint",
+          "version": {
+            "requires": "1.5.0-alpha11"
+          },
+          "reason": "material3 is in atomic group androidx.compose.material3"
+        },
+        {
+          "group": "androidx.compose.material3",
+          "module": "material3-window-size-class",
+          "version": {
+            "requires": "1.5.0-alpha11"
+          },
+          "reason": "material3 is in atomic group androidx.compose.material3"
+        }
+      ],
+      "files": [
+        {
+          "name": "material3-android-1.5.0-alpha11-sources.jar",
+          "url": "material3-android-1.5.0-alpha11-sources.jar",
+          "size": 835978,
+          "sha512": "5cff60385ffaa499313773c17120110a1a390f9f1c07bd387f6ce5d7d0c947f906d85e6967a3fe9cff02c85578b7c7ccd3deeb224b756d73398ba2638ad71a1c",
+          "sha256": "4efacd700ec4bc460b94ebb0ecff51e95c84d474777f9d80eda0a7a630c4fb7a",
+          "sha1": "883fcfe26baafa77467c3c67e724080a8abf1b6e",
+          "md5": "abb2c0d6fd8dcf70d02adfd3c1180e70"
+        },
+        {
+          "name": "material3-1.5.0-alpha11-samples-sources.jar",
+          "url": "material3-android-1.5.0-alpha11-samples-sources.jar",
+          "size": 96351,
+          "sha512": "45f38c12ef6a07e304107bc748257cb06deed71d8569015d11fae3e8a5bf0b964b67291b62ebc1aad95a84c8da0ca95bc9108bf4f930d1c421f850ae2d47b642",
+          "sha256": "7922b91b47e7660a6354c3e732080d417e0abc4aaab40b0a0605d68ae3a25fe9",
+          "sha1": "9f37f81381dcd984d525fbb96f3c5fcb81005243",
+          "md5": "3479b80d0aa0085487da3e1f0176e82a"
+        }
+      ]
+    }
+  ]
+}
