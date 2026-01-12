@@ -58,6 +58,11 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
 
+enum class SettingsType {
+    SECURE,
+    SYSTEM
+}
+
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun SliderPreference(
@@ -174,34 +179,105 @@ fun SecureSettingSlider(
     position: PreferencePosition = LocalPreferencePosition.current,
     formatValue: ((Int) -> String)? = null
 ) {
+    SettingsSliderBase(
+        settingsType = SettingsType.SECURE,
+        settingKey = settingKey,
+        title = title,
+        summary = summary,
+        min = min,
+        max = max,
+        interval = interval,
+        unit = unit,
+        defaultValue = defaultValue,
+        modifier = modifier,
+        enabled = enabled,
+        position = position,
+        formatValue = formatValue
+    )
+}
+
+@Composable
+fun SystemSettingSlider(
+    settingKey: String,
+    title: String,
+    summary: String,
+    min: Int = 0,
+    max: Int,
+    interval: Int = 1,
+    unit: String = "",
+    defaultValue: Int = min,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    position: PreferencePosition = LocalPreferencePosition.current,
+    formatValue: ((Int) -> String)? = null
+) {
+    SettingsSliderBase(
+        settingsType = SettingsType.SYSTEM,
+        settingKey = settingKey,
+        title = title,
+        summary = summary,
+        min = min,
+        max = max,
+        interval = interval,
+        unit = unit,
+        defaultValue = defaultValue,
+        modifier = modifier,
+        enabled = enabled,
+        position = position,
+        formatValue = formatValue
+    )
+}
+
+@Composable
+fun SettingsSliderBase(
+    settingsType: SettingsType,
+    settingKey: String,
+    title: String,
+    summary: String,
+    min: Int = 0,
+    max: Int,
+    interval: Int = 1,
+    unit: String = "",
+    defaultValue: Int = min,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    position: PreferencePosition = LocalPreferencePosition.current,
+    formatValue: ((Int) -> String)? = null
+) {
     val context = LocalContext.current
     val contentResolver = context.contentResolver
     
-    var currentValue by remember {
-        mutableFloatStateOf(
-            try {
-                Settings.Secure.getInt(contentResolver, settingKey, defaultValue).toFloat()
-            } catch (e: Exception) {
-                defaultValue.toFloat()
+    fun getValue(): Int {
+        return try {
+            when (settingsType) {
+                SettingsType.SECURE -> Settings.Secure.getInt(contentResolver, settingKey, defaultValue)
+                SettingsType.SYSTEM -> Settings.System.getInt(contentResolver, settingKey, defaultValue)
             }
-        )
+        } catch (e: Exception) {
+            defaultValue
+        }
     }
+
+    fun setValue(value: Int) {
+        when (settingsType) {
+            SettingsType.SECURE -> Settings.Secure.putInt(contentResolver, settingKey, value)
+            SettingsType.SYSTEM -> Settings.System.putInt(contentResolver, settingKey, value)
+        }
+    }
+
+    var currentValue by remember { mutableFloatStateOf(getValue().toFloat()) }
     
     DisposableEffect(settingKey) {
         val observer = object : android.database.ContentObserver(android.os.Handler(android.os.Looper.getMainLooper())) {
             override fun onChange(selfChange: Boolean) {
-                currentValue = try {
-                    Settings.Secure.getInt(contentResolver, settingKey, defaultValue).toFloat()
-                } catch (e: Exception) {
-                    defaultValue.toFloat()
-                }
+                currentValue = getValue().toFloat()
             }
         }
-        contentResolver.registerContentObserver(
-            Settings.Secure.getUriFor(settingKey),
-            false,
-            observer
-        )
+        val uri = when (settingsType) {
+            SettingsType.SECURE -> Settings.Secure.getUriFor(settingKey)
+            SettingsType.SYSTEM -> Settings.System.getUriFor(settingKey)
+        }
+        contentResolver.registerContentObserver(uri, false, observer)
         onDispose { contentResolver.unregisterContentObserver(observer) }
     }
     
@@ -224,10 +300,10 @@ fun SecureSettingSlider(
             currentValue = steppedValue.coerceIn(min, max).toFloat()
         },
         onValueChangeFinished = {
-            Settings.Secure.putInt(contentResolver, settingKey, currentValue.roundToInt())
+            setValue(currentValue.roundToInt())
         },
         onReset = {
-            Settings.Secure.putInt(contentResolver, settingKey, defaultValue)
+            setValue(defaultValue)
             currentValue = defaultValue.toFloat()
         },
         valueRange = min.toFloat()..max.toFloat(),
