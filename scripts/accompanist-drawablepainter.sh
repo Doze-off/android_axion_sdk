@@ -1,10 +1,14 @@
 #!/bin/bash
 
-ARTIFACT="accompanist-drawablepainter"
+ARTIFACT=""
 VERSION=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
+        -a|--artifact)
+            ARTIFACT="$2"
+            shift 2
+            ;;
         -v|--version)
             VERSION="$2"
             shift 2
@@ -17,13 +21,13 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$VERSION" ]]; then
-    echo "Usage: $0 -v <version>"
+    echo "Usage: $0 -a <artifact> -v <version>"
     exit 1
 fi
 
 URL="https://repo1.maven.org/maven2/com/google/accompanist/$ARTIFACT/$VERSION/"
 
-echo "Downloading all files for $ARTIFACT - version $VERSION"
+echo "Downloading accompanist $ARTIFACT - version $VERSION"
 echo "Source: $URL"
 echo "-----------------------------------------------------"
 

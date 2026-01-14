@@ -1,10 +1,14 @@
 #!/bin/bash
 
-ARTIFACT="material3-android"
+ARTIFACT=""
 VERSION=""
 
 while [[ $# -gt 0 ]]; do
     case $1 in
+        -a|--artifact)
+            ARTIFACT="$2"
+            shift 2
+            ;;
         -v|--version)
             VERSION="$2"
             shift 2
@@ -17,7 +21,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$VERSION" ]]; then
-    echo "Usage: $0 -v <version>"
+    echo "Usage: $0 -a <artifact> -v <version>"
     exit 1
 fi
 
@@ -26,7 +30,7 @@ URL="https://dl.google.com/dl/android/maven2/androidx/compose/material3/$ARTIFAC
 exts=( ".aar" ".pom" ".module" "-sources.jar" "-samples-sources.jar" )
 sums=( "" ".md5" ".sha1" ".sha256" ".sha512" )
 
-echo "Downloading Material 3 artifacts - version $VERSION"
+echo "Downloading Material 3 $ARTIFACT - version $VERSION"
 
 for ext in "${exts[@]}"; do
     for sum in "${sums[@]}"; do
