@@ -1,10 +1,10 @@
 {
   "formatVersion": "1.1",
   "component": {
-    "url": "../../material3/1.5.0-alpha11/material3-1.5.0-alpha11.module",
+    "url": "../../material3/1.5.0-alpha12/material3-1.5.0-alpha12.module",
     "group": "androidx.compose.material3",
     "module": "material3",
-    "version": "1.5.0-alpha11",
+    "version": "1.5.0-alpha12",
     "attributes": {
       "org.gradle.status": "release"
     }
@@ -12,7 +12,7 @@
   "createdBy": {
     "gradle": {
       "version": "9.2.1",
-      "buildId:": "14574256"
+      "buildId:": "14680202"
     }
   },
   "variants": [
@@ -102,7 +102,7 @@
           "group": "androidx.compose.material3",
           "module": "material3-adaptive-navigation-suite",
           "version": {
-            "requires": "1.5.0-alpha11"
+            "requires": "1.5.0-alpha12"
           },
           "reason": "material3 is in atomic group androidx.compose.material3"
         },
@@ -110,7 +110,7 @@
           "group": "androidx.compose.material3",
           "module": "material3-lint",
           "version": {
-            "requires": "1.5.0-alpha11"
+            "requires": "1.5.0-alpha12"
           },
           "reason": "material3 is in atomic group androidx.compose.material3"
         },
@@ -118,7 +118,7 @@
           "group": "androidx.compose.material3",
           "module": "material3-window-size-class",
           "version": {
-            "requires": "1.5.0-alpha11"
+            "requires": "1.5.0-alpha12"
           },
           "reason": "material3 is in atomic group androidx.compose.material3"
         }
@@ -126,12 +126,12 @@
       "files": [
         {
           "name": "material3.aar",
-          "url": "material3-android-1.5.0-alpha11.aar",
-          "size": 5292690,
-          "sha512": "7e0126cc2dca76fe3e18021cbb64b65560055b35274034e7906da963556a1df1d03031f35312265b2a46fb7376d4438c4a7832dafd4eabd5b72acd60fd585315",
-          "sha256": "988fdf441710910d3cd2ac8c7a7fe616f6cf0cbe165e83a482270f62a7a25b1b",
-          "sha1": "87e5bf7426107906a614ac5ba36cb98833cc86bc",
-          "md5": "b1fd214d85fa45056a4be8bbc2b98adb"
+          "url": "material3-android-1.5.0-alpha12.aar",
+          "size": 5311580,
+          "sha512": "0146bccc749259d42f55f56518ba2a384a419e843b2ce9688802e34aeb098695e542c71ac9a258dc955e8e4a83483ebc6e27f90ec8d605d841a79fde237c86e5",
+          "sha256": "6a1140683a8e227b066908bc4493828a4037a0933b902b9af102e28656b4223e",
+          "sha1": "1188728f4cc8c2b74963b9c63c8e53260644606b",
+          "md5": "258e4a87d754fef5c2f2878f80365c8a"
         }
       ]
     },
@@ -256,7 +256,7 @@
           "group": "androidx.compose.material3",
           "module": "material3-adaptive-navigation-suite",
           "version": {
-            "requires": "1.5.0-alpha11"
+            "requires": "1.5.0-alpha12"
           },
           "reason": "material3 is in atomic group androidx.compose.material3"
         },
@@ -264,7 +264,7 @@
           "group": "androidx.compose.material3",
           "module": "material3-lint",
           "version": {
-            "requires": "1.5.0-alpha11"
+            "requires": "1.5.0-alpha12"
           },
           "reason": "material3 is in atomic group androidx.compose.material3"
         },
@@ -272,7 +272,7 @@
           "group": "androidx.compose.material3",
           "module": "material3-window-size-class",
           "version": {
-            "requires": "1.5.0-alpha11"
+            "requires": "1.5.0-alpha12"
           },
           "reason": "material3 is in atomic group androidx.compose.material3"
         }
@@ -280,12 +280,12 @@
       "files": [
         {
           "name": "material3.aar",
-          "url": "material3-android-1.5.0-alpha11.aar",
-          "size": 5292690,
-          "sha512": "7e0126cc2dca76fe3e18021cbb64b65560055b35274034e7906da963556a1df1d03031f35312265b2a46fb7376d4438c4a7832dafd4eabd5b72acd60fd585315",
-          "sha256": "988fdf441710910d3cd2ac8c7a7fe616f6cf0cbe165e83a482270f62a7a25b1b",
-          "sha1": "87e5bf7426107906a614ac5ba36cb98833cc86bc",
-          "md5": "b1fd214d85fa45056a4be8bbc2b98adb"
+          "url": "material3-android-1.5.0-alpha12.aar",
+          "size": 5311580,
+          "sha512": "0146bccc749259d42f55f56518ba2a384a419e843b2ce9688802e34aeb098695e542c71ac9a258dc955e8e4a83483ebc6e27f90ec8d605d841a79fde237c86e5",
+          "sha256": "6a1140683a8e227b066908bc4493828a4037a0933b902b9af102e28656b4223e",
+          "sha1": "1188728f4cc8c2b74963b9c63c8e53260644606b",
+          "md5": "258e4a87d754fef5c2f2878f80365c8a"
         }
       ]
     },
@@ -305,7 +305,7 @@
           "group": "androidx.compose.material3",
           "module": "material3-adaptive-navigation-suite",
           "version": {
-            "requires": "1.5.0-alpha11"
+            "requires": "1.5.0-alpha12"
           },
           "reason": "material3 is in atomic group androidx.compose.material3"
         },
@@ -313,7 +313,7 @@
           "group": "androidx.compose.material3",
           "module": "material3-lint",
           "version": {
-            "requires": "1.5.0-alpha11"
+            "requires": "1.5.0-alpha12"
           },
           "reason": "material3 is in atomic group androidx.compose.material3"
         },
@@ -321,29 +321,29 @@
           "group": "androidx.compose.material3",
           "module": "material3-window-size-class",
           "version": {
-            "requires": "1.5.0-alpha11"
+            "requires": "1.5.0-alpha12"
           },
           "reason": "material3 is in atomic group androidx.compose.material3"
         }
       ],
       "files": [
         {
-          "name": "material3-android-1.5.0-alpha11-sources.jar",
-          "url": "material3-android-1.5.0-alpha11-sources.jar",
-          "size": 835978,
-          "sha512": "5cff60385ffaa499313773c17120110a1a390f9f1c07bd387f6ce5d7d0c947f906d85e6967a3fe9cff02c85578b7c7ccd3deeb224b756d73398ba2638ad71a1c",
-          "sha256": "4efacd700ec4bc460b94ebb0ecff51e95c84d474777f9d80eda0a7a630c4fb7a",
-          "sha1": "883fcfe26baafa77467c3c67e724080a8abf1b6e",
-          "md5": "abb2c0d6fd8dcf70d02adfd3c1180e70"
+          "name": "material3-android-1.5.0-alpha12-sources.jar",
+          "url": "material3-android-1.5.0-alpha12-sources.jar",
+          "size": 837532,
+          "sha512": "fd9162acca11a92aaed9cde70d4ae096af649d022dfb4fd02ee6cc43316215b94c79ceab753eace6840ae44ed09552640d6fa816d648f6ab63a676724152627f",
+          "sha256": "0bcab399a5f43ad652349ec3c4e558d566f5b87eed5c1e4257a1bd49e2dc8286",
+          "sha1": "762462851f11878efd7a91a55412194d5cef6b7d",
+          "md5": "89851387cf6d86df5eadf53f4574402b"
         },
         {
-          "name": "material3-1.5.0-alpha11-samples-sources.jar",
-          "url": "material3-android-1.5.0-alpha11-samples-sources.jar",
-          "size": 96351,
-          "sha512": "45f38c12ef6a07e304107bc748257cb06deed71d8569015d11fae3e8a5bf0b964b67291b62ebc1aad95a84c8da0ca95bc9108bf4f930d1c421f850ae2d47b642",
-          "sha256": "7922b91b47e7660a6354c3e732080d417e0abc4aaab40b0a0605d68ae3a25fe9",
-          "sha1": "9f37f81381dcd984d525fbb96f3c5fcb81005243",
-          "md5": "3479b80d0aa0085487da3e1f0176e82a"
+          "name": "material3-1.5.0-alpha12-samples-sources.jar",
+          "url": "material3-android-1.5.0-alpha12-samples-sources.jar",
+          "size": 96448,
+          "sha512": "5a6f7f2adaba5358e90083bef3696b1593a234fd15774455f646d74a9a18babf17ee227dfc4badf493869c19167b6a228bbf5b0436c86d8004a9f9922b1bb64e",
+          "sha256": "4dc061976e97223f47adce5e233a32557c521984377470aa75568469fe2db0e7",
+          "sha1": "0e4267f068aba337ec488669e1bdc8b04639ec6c",
+          "md5": "f832e869ada45461e67c5a56f6cdbde7"
         }
       ]
     }
