@@ -8,11 +8,11 @@
   <modelVersion>4.0.0</modelVersion>
   <groupId>androidx.compose.material3</groupId>
   <artifactId>material3-android</artifactId>
-  <version>1.5.0-alpha11</version>
+  <version>1.5.0-alpha12</version>
   <packaging>aar</packaging>
   <name>Compose Material3 Components</name>
   <description>Compose Material You Design Components library</description>
-  <url>https://developer.android.com/jetpack/androidx/releases/compose-material3#1.5.0-alpha11</url>
+  <url>https://developer.android.com/jetpack/androidx/releases/compose-material3#1.5.0-alpha12</url>
   <inceptionYear>2021</inceptionYear>
   <organization>
     <name>The Android Open Source Project</name>
@@ -38,17 +38,17 @@
       <dependency>
         <groupId>androidx.compose.material3</groupId>
         <artifactId>material3-adaptive-navigation-suite</artifactId>
-        <version>1.5.0-alpha11</version>
+        <version>1.5.0-alpha12</version>
       </dependency>
       <dependency>
         <groupId>androidx.compose.material3</groupId>
         <artifactId>material3-lint</artifactId>
-        <version>1.5.0-alpha11</version>
+        <version>1.5.0-alpha12</version>
       </dependency>
       <dependency>
         <groupId>androidx.compose.material3</groupId>
         <artifactId>material3-window-size-class</artifactId>
-        <version>1.5.0-alpha11</version>
+        <version>1.5.0-alpha12</version>
       </dependency>
     </dependencies>
   </dependencyManagement>
