@@ -1,7 +1,7 @@
 // This is a generated file. Do not modify directly.
 
 android_library_import {
-    name: "androidx.compose.material3_material3_1.5.0-alpha11",
+    name: "ax.androidx.compose.material3_material3",
     aars: ["material3-android-1.5.0-alpha11.aar"],
     sdk_version: "34",
     apex_available: [
