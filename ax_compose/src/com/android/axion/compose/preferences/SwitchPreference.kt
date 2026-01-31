@@ -14,9 +14,12 @@
  * limitations under the License.
  */
 
+@file:OptIn(ExperimentalMaterial3ExpressiveApi::class)
+
 package com.android.axion.compose.preferences
 
 import android.provider.Settings
+import androidx.compose.animation.Crossfade
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -134,12 +137,17 @@ fun SwitchPreference(
             onCheckedChange = null,
             enabled = enabled,
             thumbContent = {
-                Icon(
-                    imageVector = if (checked) Icons.Filled.Check else Icons.Filled.Close,
-                    contentDescription = null,
-                    tint = MaterialTheme.colorScheme.primary,
-                    modifier = Modifier.size(SwitchDefaults.IconSize)
-                )
+                Crossfade(
+                    targetState = checked,
+                    animationSpec = MaterialTheme.motionScheme.slowEffectsSpec()
+                ) { isChecked ->
+                    Icon(
+                        imageVector = if (isChecked) Icons.Filled.Check else Icons.Filled.Close,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(SwitchDefaults.IconSize)
+                    )
+                }
             },
             colors = SwitchDefaults.colors(
                 uncheckedTrackColor = Color.Transparent
