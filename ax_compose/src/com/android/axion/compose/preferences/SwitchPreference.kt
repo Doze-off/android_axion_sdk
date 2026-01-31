@@ -137,6 +137,7 @@ fun SwitchPreference(
                 Icon(
                     imageVector = if (checked) Icons.Filled.Check else Icons.Filled.Close,
                     contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(SwitchDefaults.IconSize)
                 )
             },
