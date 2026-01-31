@@ -26,8 +26,8 @@ import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Check
-import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.rounded.Check
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -141,12 +141,20 @@ fun SwitchPreference(
                     targetState = checked,
                     animationSpec = MaterialTheme.motionScheme.slowEffectsSpec()
                 ) { isChecked ->
-                    Icon(
-                        imageVector = if (isChecked) Icons.Filled.Check else Icons.Filled.Close,
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(SwitchDefaults.IconSize)
-                    )
+                    if (isChecked) {
+                        Icon(
+                            imageVector = Icons.Rounded.Check,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(SwitchDefaults.IconSize)
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Rounded.Close,
+                            contentDescription = null,
+                            modifier = Modifier.size(SwitchDefaults.IconSize)
+                        )
+                    }
                 }
             },
             colors = SwitchDefaults.colors(
