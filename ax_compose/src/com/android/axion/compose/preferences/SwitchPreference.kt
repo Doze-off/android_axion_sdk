@@ -88,7 +88,6 @@ fun SwitchPreference(
             .background(MaterialTheme.colorScheme.surfaceBright)
             .clickable(
                 interactionSource = interactionSource,
-                indication = null,
                 enabled = enabled
             ) { onCheckedChange(!checked) }
             .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -135,6 +134,7 @@ fun SwitchPreference(
         Switch(
             checked = checked,
             onCheckedChange = null,
+            interactionSource = interactionSource,
             enabled = enabled,
             thumbContent = {
                 Crossfade(
