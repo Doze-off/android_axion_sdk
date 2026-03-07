@@ -24,6 +24,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Check
@@ -76,11 +77,14 @@ fun SwitchPreference(
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
     enabled: Boolean = true,
+    iconTint: Color? = null,
+    iconBackgroundColor: Color? = null,
     position: PreferencePosition = LocalPreferencePosition.current
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val shape = preferenceShape(position)
-    
+    val resolvedIconTint = iconTint ?: MaterialTheme.colorScheme.onSurfaceVariant
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -100,13 +104,19 @@ fun SwitchPreference(
         ) {
             if (icon != null) {
                 Box(
-                    modifier = Modifier.size(40.dp),
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(CircleShape)
+                        .then(
+                            if (iconBackgroundColor != null) Modifier.background(iconBackgroundColor)
+                            else Modifier
+                        ),
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
                         imageVector = icon,
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        tint = resolvedIconTint,
                         modifier = Modifier.size(24.dp)
                     )
                 }
@@ -173,6 +183,8 @@ fun SecureSettingSwitch(
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
     enabled: Boolean = true,
+    iconTint: Color? = null,
+    iconBackgroundColor: Color? = null,
     position: PreferencePosition = LocalPreferencePosition.current
 ) {
     val context = LocalContext.current
@@ -217,6 +229,8 @@ fun SecureSettingSwitch(
         modifier = modifier,
         icon = icon,
         enabled = enabled,
+        iconTint = iconTint,
+        iconBackgroundColor = iconBackgroundColor,
         position = position
     )
 }
@@ -230,6 +244,8 @@ fun SystemSettingSwitch(
     modifier: Modifier = Modifier,
     icon: ImageVector? = null,
     enabled: Boolean = true,
+    iconTint: Color? = null,
+    iconBackgroundColor: Color? = null,
     position: PreferencePosition = LocalPreferencePosition.current
 ) {
     val context = LocalContext.current
@@ -274,6 +290,8 @@ fun SystemSettingSwitch(
         modifier = modifier,
         icon = icon,
         enabled = enabled,
+        iconTint = iconTint,
+        iconBackgroundColor = iconBackgroundColor,
         position = position
     )
 }

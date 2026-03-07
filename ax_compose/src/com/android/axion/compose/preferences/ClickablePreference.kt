@@ -28,6 +28,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
 
@@ -40,11 +41,15 @@ fun ClickablePreference(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     showExternalIcon: Boolean = false,
+    iconTint: Color? = null,
+    iconBackgroundColor: Color? = null,
     position: PreferencePosition = LocalPreferencePosition.current
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val shape = preferenceShape(position)
-    
+    val resolvedIconTint = iconTint ?: if (enabled) MaterialTheme.colorScheme.onSurfaceVariant
+                                       else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
+
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -59,19 +64,22 @@ fun ClickablePreference(
             .padding(horizontal = 16.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
-        
+
         if (icon != null) {
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .clip(CircleShape),
+                    .clip(CircleShape)
+                    .then(
+                        if (iconBackgroundColor != null) Modifier.background(iconBackgroundColor)
+                        else Modifier
+                    ),
                 contentAlignment = Alignment.Center
             ) {
                 Icon(
                     imageVector = icon,
                     contentDescription = null,
-                    tint = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant
-                           else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
+                    tint = resolvedIconTint,
                     modifier = Modifier.size(24.dp)
                 )
             }
