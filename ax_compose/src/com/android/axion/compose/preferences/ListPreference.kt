@@ -57,10 +57,11 @@ fun SecureListPreference(
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = 60.dp)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceBright)
             .clickable(enabled = enabled) { showDialog = true }
-            .padding(horizontal = 16.dp, vertical = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {
@@ -110,10 +111,11 @@ fun ListPreference(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .heightIn(min = 60.dp)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceBright)
             .clickable(enabled = enabled) { showDialog = true }
-            .padding(horizontal = 16.dp, vertical = 16.dp),
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
         Column(modifier = Modifier.weight(1f)) {

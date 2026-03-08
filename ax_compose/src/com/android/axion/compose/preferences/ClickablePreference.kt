@@ -53,15 +53,16 @@ fun ClickablePreference(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .heightIn(min = 60.dp)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceBright)
             .clickable(
                 interactionSource = interactionSource,
-                indication = null,
+                indication = ripple(),
                 enabled = enabled,
                 onClick = onClick
             )
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(start = 16.dp, end = 20.dp, top = 10.dp, bottom = 10.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
 
@@ -83,7 +84,7 @@ fun ClickablePreference(
                     modifier = Modifier.size(24.dp)
                 )
             }
-            Spacer(modifier = Modifier.width(16.dp))
+            Spacer(modifier = Modifier.width(8.dp))
         }
         
         Column(

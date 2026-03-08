@@ -146,7 +146,7 @@ fun AppListPreference(
                 .fillMaxWidth()
                 .clip(shape)
                 .background(MaterialTheme.colorScheme.surfaceBright)
-                .padding(horizontal = 16.dp, vertical = 16.dp)
+                .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         Text(
             text = title,

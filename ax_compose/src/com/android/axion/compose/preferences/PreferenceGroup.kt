@@ -42,7 +42,6 @@ class PreferenceGroupScopeImpl : PreferenceGroupScope {
 fun PreferenceGroup(
     modifier: Modifier = Modifier,
     title: String? = null,
-    spaceBetween: Dp = 1.dp,
     content: PreferenceGroupScope.() -> Unit
 ) {
     val scope = PreferenceGroupScopeImpl()
@@ -61,9 +60,9 @@ fun PreferenceGroup(
                     .padding(start = 16.dp, bottom = 8.dp, top = 4.dp)
             )
         }
-        
+
         Column(
-            verticalArrangement = Arrangement.spacedBy(spaceBetween)
+            verticalArrangement = Arrangement.spacedBy(1.dp)
         ) {
             items.forEachIndexed { index, composable ->
                 val position = when {

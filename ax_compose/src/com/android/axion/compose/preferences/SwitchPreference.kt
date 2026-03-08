@@ -47,23 +47,26 @@ enum class PreferencePosition {
     Bottom
 }
 
+private val preferenceCornerRadius = 20.dp
+private val bottomTopCornerRadius = 4.dp
+
 val LocalPreferencePosition = compositionLocalOf { PreferencePosition.Single }
 
 fun preferenceShape(position: PreferencePosition): Shape {
     return when (position) {
-        PreferencePosition.Single -> RoundedCornerShape(28.dp)
+        PreferencePosition.Single -> RoundedCornerShape(preferenceCornerRadius)
         PreferencePosition.Top -> RoundedCornerShape(
-            topStart = 28.dp,
-            topEnd = 28.dp,
-            bottomStart = 4.dp,
-            bottomEnd = 4.dp
+            topStart = preferenceCornerRadius,
+            topEnd = preferenceCornerRadius,
+            bottomStart = bottomTopCornerRadius,
+            bottomEnd = bottomTopCornerRadius
         )
         PreferencePosition.Middle -> RoundedCornerShape(4.dp)
         PreferencePosition.Bottom -> RoundedCornerShape(
-            topStart = 4.dp,
-            topEnd = 4.dp,
-            bottomStart = 28.dp,
-            bottomEnd = 28.dp
+            topStart = bottomTopCornerRadius,
+            topEnd = bottomTopCornerRadius,
+            bottomStart = preferenceCornerRadius,
+            bottomEnd = preferenceCornerRadius
         )
     }
 }
@@ -88,13 +91,15 @@ fun SwitchPreference(
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .heightIn(min = 60.dp)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceBright)
             .clickable(
                 interactionSource = interactionSource,
+                indication = ripple(),
                 enabled = enabled
             ) { onCheckedChange(!checked) }
-            .padding(horizontal = 16.dp, vertical = 14.dp),
+            .padding(start = 16.dp, end = 20.dp, top = 10.dp, bottom = 10.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -120,7 +125,7 @@ fun SwitchPreference(
                         modifier = Modifier.size(24.dp)
                     )
                 }
-                Spacer(modifier = Modifier.width(16.dp))
+                Spacer(modifier = Modifier.width(8.dp))
             }
             Column(
                 modifier = Modifier.padding(end = 16.dp)
