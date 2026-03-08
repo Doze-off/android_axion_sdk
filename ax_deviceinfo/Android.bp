@@ -1,0 +1,27 @@
+package {
+    default_visibility: ["//visibility:public"],
+}
+
+android_library {
+    name: "ax_deviceinfo",
+    manifest: "AndroidManifest.xml",
+
+    srcs: [
+        "src/**/*.kt",
+    ],
+
+    static_libs: [
+        "kotlin-stdlib",
+        "SettingsLib",
+    ],
+
+    libs: [
+        "framework",
+    ],
+
+    kotlincflags: [
+        "-Xjvm-default=all",
+    ],
+
+    visibility: ["//visibility:public"],
+}

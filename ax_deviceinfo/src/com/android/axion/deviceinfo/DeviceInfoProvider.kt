@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.axion.compose.about
+package com.android.axion.deviceinfo
 
 import android.content.Context
 import android.hardware.camera2.CameraCharacteristics
@@ -48,6 +48,7 @@ data class DeviceInfo(
     val storageTotal: String,
     val storagePercentage: Float,
     val batteryCapacity: String,
+    val screenSize: String,
     val screenResolution: String,
     val frontCamera: String,
     val rearCamera: String,
@@ -58,7 +59,7 @@ object DeviceInfoProvider {
 
     fun getDeviceInfo(context: Context): DeviceInfo {
         val storageInfo = getStorageInfo(context)
-        
+
         return DeviceInfo(
             deviceName = getDeviceName(context),
             model = Build.MODEL,
@@ -75,6 +76,7 @@ object DeviceInfoProvider {
             storageTotal = storageInfo.second,
             storagePercentage = storageInfo.third,
             batteryCapacity = getBatteryCapacity(context),
+            screenSize = getScreenSize(),
             screenResolution = getScreenResolution(context),
             frontCamera = getFrontCameraMegapixels(context),
             rearCamera = getRearCameraMegapixels(context),
@@ -105,68 +107,55 @@ object DeviceInfoProvider {
     }
 
     fun getMaintainerName(): String {
-        return SystemProperties.get("persist.sys.axion_maintainer", "AxionTeam")
+        return SystemProperties.get("persist.sys.axion_maintainer", "Unknown")
             .replace("_", " ")
     }
 
     fun getProcessor(): String {
-        val model = SystemProperties.get("ro.product.model", "").lowercase()
-        val numberMatch = Regex("""\b(pixel\s*)(\d+)([a-z\s]*)\b""").find(model)
-        val number = numberMatch?.groups?.get(2)?.value?.toIntOrNull()
-
-        return when (number) {
-            6 -> "Google Tensor"
-            7 -> "Google Tensor G2"
-            8 -> "Google Tensor G3"
-            9 -> "Google Tensor G4"
-            else -> SystemProperties.get("persist.sys.axion_processor_info", "Unknown")
-                .replace("_", " ")
+        val processorInfo = SystemProperties.get("persist.sys.axion_processor_info", "")
+        if (processorInfo.isNotEmpty()) {
+            return processorInfo.replace("_", " ")
         }
+        return Build.HARDWARE.replaceFirstChar { it.titlecase(Locale.getDefault()) }
     }
 
     fun getTotalRam(): String {
-        /* TODO: Fix wrong calculation
-        val ramProp = SystemProperties.get("persist.sys.device_ram_size", "")
-        if (ramProp.isNotEmpty()) {
-            return "$ramProp GB"
-        */
-        
         val memInfoReader = MemInfoReader()
         memInfoReader.readMemInfo()
         val totalMemoryBytes = memInfoReader.totalSize
         val totalMemoryGB = totalMemoryBytes / (1000.0 * 1000.0 * 1000.0)
         val rounded = totalMemoryGB.roundToInt().coerceAtLeast(1)
-        return "$rounded GB"
+        return "${rounded}GB"
     }
 
     private fun getStorageInfo(context: Context): Triple<String, String, Float> {
         val storageManager = context.getSystemService(StorageManager::class.java)
         val volumeProvider = StorageManagerVolumeProvider(storageManager)
         val info = PrivateStorageInfo.getPrivateStorageInfo(volumeProvider)
-        
+
         val totalBytes = info.totalBytes
         val usedBytes = totalBytes - info.freeBytes
-        
+
         val usedGB = usedBytes / (1024.0 * 1024.0 * 1024.0)
         val totalStorageGB = totalBytes / (1024.0 * 1024.0 * 1024.0)
         val roundedStorageGB = roundToNearestKnownStorageSize(totalStorageGB)
-        
+
         val usedString = if (usedGB.compareTo(1024.0) >= 0) {
             String.format(Locale.US, "%.1f TB", usedGB / 1024.0)
         } else {
             String.format(Locale.US, "%.1f GB", usedGB)
         }
-        
+
         val totalString = if (roundedStorageGB >= 1024) {
-            "${roundedStorageGB / 1024} TB"
+            "${roundedStorageGB / 1024}TB"
         } else {
-            "$roundedStorageGB GB"
+            "${roundedStorageGB}GB"
         }
-        
+
         val percentage = if (totalBytes > 0) {
             (usedBytes.toFloat() / totalBytes.toFloat())
         } else 0f
-        
+
         return Triple(usedString, totalString, percentage)
     }
 
@@ -180,37 +169,14 @@ object DeviceInfoProvider {
     }
 
     fun getBatteryCapacity(context: Context): String {
-        val model = SystemProperties.get("ro.product.model", "").lowercase()
-        val numberMatch = Regex("""\b(pixel\s*)(\d+)([a-z\s]*)\b""").find(model)
-        val number = numberMatch?.groups?.get(2)?.value?.toIntOrNull()
-        val variant = numberMatch?.groups?.get(3)?.value?.trim() ?: ""
-        
-        val batteryCapacity = when (number) {
-            6 -> when {
-                variant.contains("pro") -> 5003
-                variant.contains("a") -> 4410
-                else -> 4614
-            }
-            7 -> when {
-                variant.contains("pro") -> 5000
-                variant.contains("a") -> 4385
-                else -> 4355
-            }
-            8 -> when {
-                variant.contains("pro") -> 5050
-                variant.contains("a") -> 4492
-                else -> 4575
-            }
-            9 -> when {
-                variant.contains("pro xl") -> 5060
-                variant.contains("pro") -> 4700
-                else -> 4700
-            }
-            else -> {
-                PowerProfile(context).getAveragePower(PowerProfile.POWER_BATTERY_CAPACITY).roundToInt()
-            }
-        }
-        return "$batteryCapacity mAh"
+        val capacity = PowerProfile(context)
+            .getAveragePower(PowerProfile.POWER_BATTERY_CAPACITY)
+            .roundToInt()
+        return "$capacity mAh"
+    }
+
+    fun getScreenSize(): String {
+        return SystemProperties.get("persist.sys.axion_screen_size", "")
     }
 
     fun getScreenResolution(context: Context): String {
@@ -218,55 +184,42 @@ object DeviceInfoProvider {
         val display = dm?.getDisplay(Display.DEFAULT_DISPLAY)
         val height = display?.mode?.physicalHeight
         val width = display?.mode?.physicalWidth
-        return "${width} × ${height}"
+        return "${width} x ${height}"
     }
 
     fun getFrontCameraMegapixels(context: Context): String {
-        val frontCameraInfo = SystemProperties.get("persist.sys.device_camera_info_front", null)
-        if (!frontCameraInfo.isNullOrEmpty()) {
-            return "$frontCameraInfo MP"
+        val frontCameraInfo = SystemProperties.get("persist.sys.device_camera_info_front", "")
+        if (frontCameraInfo.isNotEmpty()) {
+            return "${frontCameraInfo}MP"
         }
 
         val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
-        val cameraIdList = cameraManager.cameraIdList
-
-        for (cameraId in cameraIdList) {
+        for (cameraId in cameraManager.cameraIdList) {
             val characteristics = cameraManager.getCameraCharacteristics(cameraId)
             val facing = characteristics.get(CameraCharacteristics.LENS_FACING)
-
-            if (facing != null && facing == CameraCharacteristics.LENS_FACING_FRONT) {
-                val megapixels = getCameraMegapixels(characteristics)
-                return formatMegapixels(megapixels)
+            if (facing == CameraCharacteristics.LENS_FACING_FRONT) {
+                return formatMegapixels(getCameraMegapixels(characteristics))
             }
         }
         return "N/A"
     }
 
     fun getRearCameraMegapixels(context: Context): String {
-        val rearCameraInfo = SystemProperties.get("persist.sys.device_camera_info_rear", null)
-        if (!rearCameraInfo.isNullOrEmpty()) {
-            return rearCameraInfo.split(",").joinToString(" + ") { "$it MP" }
+        val rearCameraInfo = SystemProperties.get("persist.sys.device_camera_info_rear", "")
+        if (rearCameraInfo.isNotEmpty()) {
+            return rearCameraInfo.split(",").joinToString(" + ") { "${it}MP" }
         }
-        
-        val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
-        val cameraIdList = cameraManager.cameraIdList
-        val rearMegapixelsList = mutableListOf<String>()
 
-        for (cameraId in cameraIdList) {
+        val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        val rearList = mutableListOf<String>()
+        for (cameraId in cameraManager.cameraIdList) {
             val characteristics = cameraManager.getCameraCharacteristics(cameraId)
             val facing = characteristics.get(CameraCharacteristics.LENS_FACING)
-
-            if (facing != null && facing == CameraCharacteristics.LENS_FACING_BACK) {
-                val megapixels = getCameraMegapixels(characteristics)
-                rearMegapixelsList.add(formatMegapixels(megapixels))
+            if (facing == CameraCharacteristics.LENS_FACING_BACK) {
+                rearList.add(formatMegapixels(getCameraMegapixels(characteristics)))
             }
         }
-
-        return if (rearMegapixelsList.isNotEmpty()) {
-            rearMegapixelsList.joinToString(" + ")
-        } else {
-            "N/A"
-        }
+        return if (rearList.isNotEmpty()) rearList.joinToString(" + ") else "N/A"
     }
 
     private fun getCameraMegapixels(characteristics: CameraCharacteristics): Double {
@@ -280,9 +233,9 @@ object DeviceInfoProvider {
 
     private fun formatMegapixels(megapixels: Double): String {
         return if (megapixels % 1.0 == 0.0) {
-            "${megapixels.toInt()} MP"
+            "${megapixels.toInt()}MP"
         } else {
-            "%.1f MP".format(megapixels)
+            "%.1fMP".format(megapixels)
         }
     }
 

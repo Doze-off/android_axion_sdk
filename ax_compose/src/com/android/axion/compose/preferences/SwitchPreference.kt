@@ -47,7 +47,7 @@ enum class PreferencePosition {
     Bottom
 }
 
-private val preferenceCornerRadius = 20.dp
+private val preferenceCornerRadius = 28.dp
 private val bottomTopCornerRadius = 4.dp
 
 val LocalPreferencePosition = compositionLocalOf { PreferencePosition.Single }

@@ -16,613 +16,550 @@
 package com.android.axion.compose.about
 
 import android.app.WallpaperManager
+import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.*
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.*
+import android.os.Build
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material.icons.outlined.BatteryStd
+import androidx.compose.material.icons.outlined.CameraAlt
+import androidx.compose.material.icons.outlined.ChevronRight
+import androidx.compose.material.icons.outlined.DeveloperBoard
+import androidx.compose.material.icons.outlined.GridView
+import androidx.compose.material.icons.outlined.Memory
+import androidx.compose.material.icons.outlined.Smartphone
+import androidx.compose.material.icons.outlined.Verified
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.Stable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.*
-import androidx.compose.ui.geometry.*
-import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.drawscope.*
-import androidx.compose.ui.draw.drawWithContent
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.colorResource
-import androidx.compose.ui.platform.*
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import kotlin.math.sin
+import com.android.axion.compose.scaffold.AxionScaffold
+import com.android.axion.deviceinfo.DeviceInfoProvider
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
-@OptIn(ExperimentalMaterial3Api::class)
+@Stable
+private class StableImageBitmap(val bitmap: ImageBitmap?)
+
 @Composable
 fun AxionAboutScreen(
-    onNavigateBack: () -> Unit,
-    onNavigateToDeviceInfo: () -> Unit,
-    onEditDeviceName: (String) -> Unit,
-    modifier: Modifier = Modifier
+  onNavigateBack: () -> Unit,
+  onNavigateToDeviceInfo: () -> Unit,
+  onEditDeviceName: (String) -> Unit,
+  modifier: Modifier = Modifier,
 ) {
-    val context = LocalContext.current
-    var deviceInfo by remember { mutableStateOf(DeviceInfoProvider.getDeviceInfo(context)) }
-    var showEditDialog by remember { mutableStateOf(false) }
-    
-    val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
-    val configuration = LocalConfiguration.current
-    val isTablet = configuration.screenWidthDp >= 600
-    
-    val wallpaperBitmap = remember {
-        try {
-            val wallpaperManager = WallpaperManager.getInstance(context)
-            val drawable = wallpaperManager.drawable
-            if (drawable is BitmapDrawable) drawable.bitmap.asImageBitmap() else null
-        } catch (e: Exception) { null }
+  val context = LocalContext.current
+  val isTablet = LocalConfiguration.current.smallestScreenWidthDp >= 600
+  var deviceInfo by remember { mutableStateOf(DeviceInfoProvider.getDeviceInfo(context)) }
+  var showEditDialog by remember { mutableStateOf(false) }
+  var wallpaperHolder by remember { mutableStateOf(StableImageBitmap(null)) }
+  val density = LocalDensity.current
+
+  LaunchedEffect(Unit) {
+    val result = withContext(Dispatchers.IO) {
+      try {
+        val drawable = WallpaperManager.getInstance(context).drawable
+        val original = (drawable as? BitmapDrawable)?.bitmap ?: return@withContext null
+        val illustrationHeightPx = with(density) { (320.dp * 0.75f).toPx() }.toInt()
+        val aspectRatio = if (isTablet) 1.4f else 0.48f
+        val targetW = if (isTablet) (illustrationHeightPx * aspectRatio).toInt() else (illustrationHeightPx * aspectRatio).toInt()
+        val targetH = illustrationHeightPx
+        val scale = minOf(targetW.toFloat() / original.width, targetH.toFloat() / original.height)
+        Bitmap.createScaledBitmap(
+          original,
+          (original.width * scale).toInt(),
+          (original.height * scale).toInt(),
+          true,
+        ).asImageBitmap()
+      } catch (e: Exception) {
+        null
+      }
     }
-    
-    val cardColor = MaterialTheme.colorScheme.surfaceBright
-    
-    Scaffold(
-        modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = Color.Transparent,
-        topBar = {
-            TopAppBar(
-                title = { Text("About device", fontWeight = FontWeight.SemiBold) },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back")
-                    }
-                },
-                scrollBehavior = scrollBehavior,
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = Color.Transparent,
-                    scrolledContainerColor = Color.Transparent
-                )
-            )
-        }
+    wallpaperHolder = StableImageBitmap(result)
+  }
+
+  Surface(modifier = modifier.fillMaxSize(), color = MaterialTheme.colorScheme.surfaceContainer) {
+    AxionScaffold(
+      title = "About phone",
+      onBackClick = onNavigateBack,
+      collapsedByDefault = false,
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colorScheme.surfaceContainer)
-                .padding(paddingValues)
-                .verticalScroll(rememberScrollState())
-        ) {
-            ImmersiveHeroBanner(
-                wallpaperBitmap = wallpaperBitmap,
-                version = deviceInfo.axionVersion,
-                buildType = deviceInfo.axionBuildType,
-                maintainer = deviceInfo.maintainer
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            DeviceInfoCard(
-                deviceName = deviceInfo.deviceName,
-                storageUsed = deviceInfo.storageUsed,
-                storageTotal = deviceInfo.storageTotal,
-                onEditDeviceName = { showEditDialog = true },
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            SpecsList(
-                maintainer = deviceInfo.maintainer,
-                processor = deviceInfo.processor,
-                ram = deviceInfo.totalRam,
-                rearCamera = deviceInfo.rearCamera,
-                frontCamera = deviceInfo.frontCamera,
-                battery = deviceInfo.batteryCapacity,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-            
-            Spacer(modifier = Modifier.height(16.dp))
-            
-            NavigationCard(
-                icon = Icons.Outlined.Info,
-                title = "More device info",
-                subtitle = "IMEI, network, status",
-                onClick = onNavigateToDeviceInfo,
-                cardColor = cardColor,
-                modifier = Modifier.padding(horizontal = 16.dp)
-            )
-            
-            Spacer(modifier = Modifier.height(32.dp))
-        }
-    }
-    
-    if (showEditDialog) {
-        var text by remember { mutableStateOf(deviceInfo.deviceName) }
-        AlertDialog(
-            onDismissRequest = { showEditDialog = false },
-            title = { Text("Edit device name") },
-            text = {
-                OutlinedTextField(
-                    value = text,
-                    onValueChange = { text = it },
-                    label = { Text("Device name") },
-                    singleLine = true,
-                    modifier = Modifier.fillMaxWidth()
-                )
-            },
-            confirmButton = {
-                TextButton(onClick = {
-                    if (text.isNotBlank()) {
-                        DeviceInfoProvider.setDeviceName(context, text.trim())
-                        deviceInfo = deviceInfo.copy(deviceName = text.trim())
-                        onEditDeviceName(text.trim())
-                    }
-                    showEditDialog = false
-                }) { Text("Save") }
-            },
-            dismissButton = { TextButton(onClick = { showEditDialog = false }) { Text("Cancel") } }
+      Column(
+        modifier =
+          Modifier.fillMaxSize()
+            .padding(paddingValues)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 24.dp),
+        verticalArrangement = Arrangement.spacedBy(24.dp),
+      ) {
+        BannerSection(
+          version = deviceInfo.axionVersion,
+          buildType = deviceInfo.axionBuildType,
+          maintainer = deviceInfo.maintainer,
+          deviceName = Build.MODEL,
+          wallpaperHolder = wallpaperHolder,
+          isTablet = isTablet,
+          onDeviceNameClick = { showEditDialog = true },
         )
-    }
-}
 
-@Composable
-private fun ImmersiveHeroBanner(
-    wallpaperBitmap: androidx.compose.ui.graphics.ImageBitmap?,
-    version: String,
-    buildType: String,
-    maintainer: String
-) {
-    val accentColor = colorResource(android.R.color.system_accent1_100)
-    
-    val infiniteTransition = rememberInfiniteTransition(label = "float")
-    val floatOffset by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 6f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(3000, easing = FastOutSlowInEasing),
-            repeatMode = RepeatMode.Reverse
-        ),
-        label = "floatOffset"
+        SpecsGrid(
+          processor = deviceInfo.processor,
+          rearCamera = "Rear: ${deviceInfo.rearCamera}",
+          frontCamera = "Front: ${deviceInfo.frontCamera}",
+          ram = deviceInfo.totalRam,
+          storage = deviceInfo.storageTotal,
+          battery = deviceInfo.batteryCapacity,
+          screen = deviceInfo.screenSize.ifEmpty { deviceInfo.screenResolution },
+          isTablet = isTablet,
+        )
+
+        DeviceDetailsSection(
+          androidVersion = deviceInfo.androidVersion,
+          onSeeAll = onNavigateToDeviceInfo,
+        )
+
+        Spacer(modifier = Modifier.height(16.dp))
+      }
+    }
+  }
+
+  if (showEditDialog) {
+    DeviceNameDialog(
+      currentName = deviceInfo.deviceName,
+      onConfirm = { name ->
+        DeviceInfoProvider.setDeviceName(context, name)
+        deviceInfo = deviceInfo.copy(deviceName = name)
+        onEditDeviceName(name)
+      },
+      onDismiss = { showEditDialog = false },
     )
-    
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .height(280.dp),
-        shape = RoundedCornerShape(28.dp),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceBright)
+  }
+}
+
+@Composable
+private fun BannerSection(
+  version: String,
+  buildType: String,
+  maintainer: String,
+  deviceName: String,
+  wallpaperHolder: StableImageBitmap,
+  isTablet: Boolean,
+  onDeviceNameClick: () -> Unit,
+) {
+  val cardRadius = 20.dp
+  val gap = 4.dp
+  val surfaceColor = MaterialTheme.colorScheme.surfaceBright
+
+  val density = LocalDensity.current
+  var boxSize by remember { mutableStateOf(IntSize.Zero) }
+
+  CompositionLocalProvider(LocalLayoutDirection provides LayoutDirection.Ltr) {
+    Box(
+      modifier =
+        Modifier.fillMaxWidth().height(320.dp).onSizeChanged { boxSize = it },
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .clip(RoundedCornerShape(28.dp))
-                .background(
-                    Brush.radialGradient(
-                        colors = listOf(
-                            accentColor.copy(alpha = 0.15f),
-                            Color.Transparent
-                        ),
-                        center = Offset.Zero,
-                        radius = 800f
-                    )
-                )
-        ) {
-            if (wallpaperBitmap != null) {
-                Image(
-                    bitmap = wallpaperBitmap,
-                    contentDescription = null,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .blur(50.dp, edgeTreatment = BlurredEdgeTreatment.Rectangle)
-                )
-                
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    Color.Black.copy(alpha = 0.3f),
-                                    Color.Black.copy(alpha = 0.5f)
-                                )
-                            )
-                        )
-                )
-            }
-            
-            Row(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(24.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.Center
-                ) {
-                    Text(
-                        "AXIONOS",
-                        style = MaterialTheme.typography.labelMedium.copy(
-                            letterSpacing = 4.sp,
-                            fontWeight = FontWeight.Medium
-                        ),
-                        color = accentColor
-                    )
-                    
-                    Spacer(Modifier.height(16.dp))
-                    
-                    Surface(
-                        shape = RoundedCornerShape(50),
-                        color = Color.White.copy(alpha = 0.15f)
-                    ) {
-                        Text(
-                            "v$version",
-                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = Color.White.copy(alpha = 0.9f)
-                        )
-                    }
-                }
-                
-                Box(
-                    modifier = Modifier
-                        .offset(y = (-floatOffset).dp)
-                        .padding(start = 16.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .width(100.dp)
-                            .height(200.dp)
-                            .clip(RoundedCornerShape(16.dp))
-                            .background(Color.Black)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(3.dp)
-                                .clip(RoundedCornerShape(14.dp))
-                                .background(
-                                    Brush.radialGradient(
-                                        colors = listOf(
-                                            accentColor.copy(alpha = 0.2f),
-                                            Color.Black
-                                        )
-                                    )
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            AnimatedDeviceIllustration(
-                                deviceName = "AxionOS",
-                                version = version,
-                                atomColor = accentColor,
-                                modifier = Modifier.size(64.dp)
-                            )
-                        }
-                        
-                        Canvas(modifier = Modifier.fillMaxSize()) {
-                            drawRoundRect(
-                                color = Color.White.copy(alpha = 0.3f),
-                                style = Stroke(width = 1.dp.toPx()),
-                                cornerRadius = CornerRadius(16.dp.toPx())
-                            )
-                            
-                            val punchHoleRadius = 4.dp.toPx()
-                            drawCircle(
-                                color = Color.Black,
-                                radius = punchHoleRadius,
-                                center = Offset(size.width / 2, 12.dp.toPx())
-                            )
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun DeviceInfoCard(
-    deviceName: String,
-    storageUsed: String,
-    storageTotal: String,
-    onEditDeviceName: () -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val usedGb = storageUsed.replace(Regex("[^0-9.]"), "").toFloatOrNull() ?: 0f
-    val totalGb = storageTotal.replace(Regex("[^0-9.]"), "").toFloatOrNull() ?: 1f
-    val storagePercent = (usedGb / totalGb).coerceIn(0f, 1f)
-    
-    val primaryColor = MaterialTheme.colorScheme.primary
-    val tertiaryColor = MaterialTheme.colorScheme.tertiary
-    val onSurface = MaterialTheme.colorScheme.onSurface
-    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
-    val cardColor = MaterialTheme.colorScheme.surfaceBright
-    
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.spacedBy(12.dp)
-    ) {
-        Card(
-            modifier = Modifier
-                .weight(1f)
-                .clickable(onClick = onEditDeviceName),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = cardColor)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.Start
-            ) {
-                PhoneOutlineIcon(
-                    color = primaryColor,
-                    modifier = Modifier.size(48.dp)
-                )
-                
-                Spacer(Modifier.height(12.dp))
-                
-                Text(
-                    "Device name",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = onSurfaceVariant
-                )
-                
-                Spacer(Modifier.height(2.dp))
-                
-                Text(
-                    deviceName,
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-        
-        Card(
-            modifier = Modifier.weight(1f),
-            shape = RoundedCornerShape(24.dp),
-            colors = CardDefaults.cardColors(containerColor = cardColor)
-        ) {
-            Column(
-                modifier = Modifier.padding(16.dp),
-                horizontalAlignment = Alignment.Start
-            ) {
-                WaveStorageIndicator(
-                    fillPercent = storagePercent,
-                    color = MaterialTheme.colorScheme.tertiary,
-                    modifier = Modifier.size(48.dp)
-                )
-                
-                Spacer(Modifier.height(12.dp))
-                
-                Text(
-                    "Storage",
-                    style = MaterialTheme.typography.labelSmall,
-                    color = onSurfaceVariant
-                )
-                
-                Spacer(Modifier.height(2.dp))
-                
-                Text(
-                    "$storageUsed / $storageTotal",
-                    style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun PhoneOutlineIcon(
-    color: Color,
-    modifier: Modifier = Modifier
-) {
-    Canvas(modifier = modifier) {
-        val strokeWidth = 2.dp.toPx()
-        val cornerRadius = 4.dp.toPx()
-        
-        val phoneWidth = size.width * 0.5f
-        val phoneHeight = size.height * 0.85f
-        val phoneLeft = 0f
-        val phoneTop = (size.height - phoneHeight) / 2
-        
-        val phonePath = Path().apply {
-            addRoundRect(
-                RoundRect(
-                    left = phoneLeft,
-                    top = phoneTop,
-                    right = phoneLeft + phoneWidth,
-                    bottom = phoneTop + phoneHeight,
-                    cornerRadius = CornerRadius(cornerRadius)
-                )
-            )
-        }
-        
-        drawPath(
-            path = phonePath,
-            color = color.copy(alpha = 0.1f)
-        )
-        
-        drawPath(
-            path = phonePath,
-            color = color,
-            style = Stroke(width = strokeWidth)
-        )
-        
-        val lineWidth = phoneWidth * 0.4f
-        val lineHeight = 2.dp.toPx()
-        val lineLeft = phoneLeft + (phoneWidth - lineWidth) / 2
-        val lineTop = phoneTop + phoneHeight - 6.dp.toPx()
-        
-        drawRoundRect(
-            color = color,
-            topLeft = Offset(lineLeft, lineTop),
-            size = Size(lineWidth, lineHeight),
-            cornerRadius = CornerRadius(lineHeight / 2)
-        )
-    }
-}
-
-@Composable
-private fun WaveStorageIndicator(
-    fillPercent: Float,
-    color: Color,
-    modifier: Modifier = Modifier
-) {
-    val infiniteTransition = rememberInfiniteTransition(label = "wave")
-    val waveOffset by infiniteTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 360f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(2000, easing = LinearEasing),
-            repeatMode = RepeatMode.Restart
-        ),
-        label = "waveOffset"
-    )
-    
-    Canvas(modifier = modifier) {
-        val strokeWidth = 2.dp.toPx()
-        val circleRadius = (size.minDimension / 2) - strokeWidth
-        val center = Offset(size.width / 2, size.height / 2)
-        
-        drawCircle(
-            color = color.copy(alpha = 0.1f),
-            radius = circleRadius,
-            center = center
-        )
-        
-        drawCircle(
-            color = color,
-            radius = circleRadius,
-            center = center,
-            style = Stroke(width = strokeWidth)
-        )
-        
-        val fillHeight = size.height * (1f - fillPercent)
-        val waveAmplitude = 3.dp.toPx()
-        val waveFrequency = 2f
-        
-        val wavePath = Path().apply {
-            moveTo(0f, fillHeight)
-            for (x in 0..size.width.toInt()) {
-                val radians = Math.toRadians((x * waveFrequency + waveOffset).toDouble())
-                val y = fillHeight + (waveAmplitude * sin(radians)).toFloat()
-                lineTo(x.toFloat(), y)
-            }
-            lineTo(size.width, size.height)
-            lineTo(0f, size.height)
-            close()
-        }
-        
-        val circlePath = Path().apply {
-            addOval(Rect(center, circleRadius))
-        }
-        
-        clipPath(circlePath) {
-            drawPath(wavePath, color.copy(alpha = 0.6f))
-        }
-    }
-}
-
-@Composable
-private fun SpecsList(
-    maintainer: String,
-    processor: String,
-    ram: String,
-    rearCamera: String,
-    frontCamera: String,
-    battery: String,
-    modifier: Modifier = Modifier
-) {
-    val cardColor = MaterialTheme.colorScheme.surfaceBright
-    
-    Card(
-        modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = cardColor)
-    ) {
+      Row(modifier = Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(gap)) {
         Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+          modifier = Modifier.weight(1f).fillMaxHeight(),
+          verticalArrangement = Arrangement.spacedBy(gap),
         ) {
-            SpecItem(label = "Maintainer", value = maintainer)
-            SpecItem(label = "Processor", value = processor)
-            SpecItem(label = "RAM", value = ram)
-            SpecItem(label = "Camera", value = "Front $frontCamera / Rear $rearCamera")
-            SpecItem(label = "Battery", value = battery)
+          Surface(
+            modifier = Modifier.weight(1f).fillMaxWidth(),
+            shape = RoundedCornerShape(cardRadius),
+            color = surfaceColor,
+          ) {
+            Column(
+              modifier = Modifier.padding(20.dp),
+              verticalArrangement = Arrangement.SpaceBetween,
+            ) {
+              Column {
+                Text(
+                  "AXIONOS",
+                  style =
+                    MaterialTheme.typography.titleMedium.copy(
+                      fontWeight = FontWeight.Bold,
+                      letterSpacing = 1.sp,
+                    ),
+                  color = MaterialTheme.colorScheme.onSurface,
+                )
+                Text(
+                  version,
+                  style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                  color = MaterialTheme.colorScheme.onSurface,
+                )
+              }
+              StatusChip(buildType = buildType, maintainer = maintainer)
+            }
+          }
+
+          Surface(
+            modifier = Modifier.weight(1f).fillMaxWidth().clickable(onClick = onDeviceNameClick),
+            shape = RoundedCornerShape(cardRadius),
+            color = surfaceColor,
+          ) {
+            Box(
+              modifier = Modifier.fillMaxSize().padding(20.dp),
+              contentAlignment = Alignment.BottomStart,
+            ) {
+              Text(
+                deviceName,
+                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                color = MaterialTheme.colorScheme.onSurface,
+              )
+            }
+          }
         }
+
+        Surface(
+          modifier = Modifier.weight(1f).fillMaxHeight(),
+          shape = RoundedCornerShape(cardRadius),
+          color = surfaceColor,
+        ) {
+          Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+            DeviceIllustration(
+              wallpaperHolder = wallpaperHolder,
+              isTablet = isTablet,
+              modifier = Modifier.fillMaxHeight(0.75f).padding(horizontal = 24.dp),
+            )
+          }
+        }
+      }
+
+      if (boxSize != IntSize.Zero) {
+        val widthDp = with(density) { boxSize.width.toDp() }
+        val heightDp = with(density) { boxSize.height.toDp() }
+
+        Canvas(
+          modifier =
+            Modifier.align(Alignment.Center)
+              .offset(x = -(widthDp / 4), y = 0.dp)
+              .width(48.dp)
+              .height(gap + 8.dp)
+        ) {
+          val w = size.width
+          val h = size.height
+          val r = h / 2
+          val path =
+            Path().apply {
+              moveTo(r, 0f)
+              quadraticTo(0f, h / 2, r, h)
+              lineTo(w - r, h)
+              quadraticTo(w, h / 2, w - r, 0f)
+              lineTo(r, 0f)
+              close()
+            }
+          drawPath(path, color = surfaceColor)
+        }
+
+        Canvas(
+          modifier =
+            Modifier.align(Alignment.Center)
+              .offset(x = 0.dp, y = -(heightDp / 4))
+              .width(gap + 8.dp)
+              .height(48.dp)
+        ) {
+          val w = size.width
+          val h = size.height
+          val r = w / 2
+          val path =
+            Path().apply {
+              moveTo(0f, r)
+              quadraticTo(w / 2, 0f, w, r)
+              lineTo(w, h - r)
+              quadraticTo(w / 2, h, 0f, h - r)
+              lineTo(0f, r)
+              close()
+            }
+          drawPath(path, color = surfaceColor)
+        }
+      }
     }
+  }
+}
+
+@Composable
+private fun DeviceIllustration(
+  wallpaperHolder: StableImageBitmap,
+  isTablet: Boolean,
+  modifier: Modifier = Modifier,
+) {
+  val deviceAspectRatio = if (isTablet) 1.4f else 0.48f
+  val frameRadius = if (isTablet) 18.dp else 20.dp
+  val bezelSize = if (isTablet) 2.dp else 3.dp
+  val screenRadius = frameRadius - bezelSize
+
+  Surface(
+    modifier = modifier.aspectRatio(deviceAspectRatio),
+    shape = RoundedCornerShape(frameRadius),
+    color = Color(0xFF1A1A1A),
+  ) {
+    Surface(
+      modifier = Modifier.fillMaxSize().padding(bezelSize),
+      shape = RoundedCornerShape(screenRadius),
+      color = Color(0xFF1A1A2E),
+    ) {
+      wallpaperHolder.bitmap?.let { bitmap ->
+        Image(
+          bitmap = bitmap,
+          contentDescription = null,
+          contentScale = ContentScale.Crop,
+          modifier = Modifier.fillMaxSize(),
+        )
+      }
+    }
+  }
+}
+
+@Composable
+private fun SpecsGrid(
+  processor: String,
+  rearCamera: String,
+  frontCamera: String,
+  ram: String,
+  storage: String,
+  battery: String,
+  screen: String,
+  isTablet: Boolean,
+) {
+  val gap = 1.5.dp
+  val large = 28.dp
+  val small = 4.dp
+  val surfaceColor = MaterialTheme.colorScheme.surfaceBright
+
+  Column(verticalArrangement = Arrangement.spacedBy(gap)) {
+    if (isTablet) {
+      SpecRowCard(surfaceColor, RoundedCornerShape(topStart = large, topEnd = large, bottomStart = small, bottomEnd = small)) {
+        SpecItem(Modifier.weight(1f), Icons.Outlined.Memory, "Processor", processor)
+        SpecItem(Modifier.weight(1f), Icons.Outlined.CameraAlt, "Camera", "$rearCamera\n$frontCamera")
+        SpecItem(Modifier.weight(1f), Icons.Outlined.DeveloperBoard, "RAM", ram)
+      }
+      SpecRowCard(surfaceColor, RoundedCornerShape(topStart = small, topEnd = small, bottomStart = large, bottomEnd = large)) {
+        SpecItem(Modifier.weight(1f), Icons.Outlined.GridView, "Storage", storage)
+        SpecItem(Modifier.weight(1f), Icons.Outlined.BatteryStd, "Battery", battery)
+        SpecItem(Modifier.weight(1f), Icons.Outlined.Smartphone, "Screen", screen)
+      }
+    } else {
+      SpecRowCard(surfaceColor, RoundedCornerShape(topStart = large, topEnd = large, bottomStart = small, bottomEnd = small)) {
+        SpecItem(Modifier.weight(1f), Icons.Outlined.Memory, "Processor", processor)
+        SpecItem(Modifier.weight(1f), Icons.Outlined.CameraAlt, "Camera", "$rearCamera\n$frontCamera")
+      }
+      SpecRowCard(surfaceColor, RoundedCornerShape(small)) {
+        SpecItem(Modifier.weight(1f), Icons.Outlined.DeveloperBoard, "RAM", ram)
+        SpecItem(Modifier.weight(1f), Icons.Outlined.GridView, "Storage", storage)
+      }
+      SpecRowCard(surfaceColor, RoundedCornerShape(topStart = small, topEnd = small, bottomStart = large, bottomEnd = large)) {
+        SpecItem(Modifier.weight(1f), Icons.Outlined.BatteryStd, "Battery", battery)
+        SpecItem(Modifier.weight(1f), Icons.Outlined.Smartphone, "Screen", screen)
+      }
+    }
+  }
+}
+
+@Composable
+private fun SpecRowCard(
+  color: Color,
+  shape: RoundedCornerShape,
+  content: @Composable RowScope.() -> Unit,
+) {
+  Surface(modifier = Modifier.fillMaxWidth(), shape = shape, color = color) {
+    Row(modifier = Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+      content()
+    }
+  }
 }
 
 @Composable
 private fun SpecItem(
-    label: String,
-    value: String
+  modifier: Modifier = Modifier,
+  icon: ImageVector,
+  title: String,
+  value: String,
 ) {
-    val onSurface = MaterialTheme.colorScheme.onSurface
-    val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
-    
-    Column {
-        Text(
-            label,
-            style = MaterialTheme.typography.labelMedium,
-            color = onSurfaceVariant
-        )
-        Spacer(Modifier.height(2.dp))
-        Text(
-            value,
-            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.Medium),
-            color = onSurface
-        )
-    }
+  Column(modifier = modifier) {
+    Icon(
+      imageVector = icon,
+      contentDescription = null,
+      tint = MaterialTheme.colorScheme.onSurfaceVariant,
+      modifier = Modifier.size(24.dp),
+    )
+    Spacer(Modifier.height(12.dp))
+    Text(
+      title,
+      style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+      color = MaterialTheme.colorScheme.onSurface,
+    )
+    Spacer(Modifier.height(2.dp))
+    Text(
+      value,
+      style = MaterialTheme.typography.bodyMedium,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+  }
 }
 
 @Composable
-private fun NavigationCard(
-    icon: ImageVector,
-    title: String,
-    subtitle: String,
-    onClick: () -> Unit,
-    cardColor: Color,
-    modifier: Modifier = Modifier
-) {
-    Card(
-        modifier = modifier.fillMaxWidth().clickable(onClick = onClick),
-        shape = RoundedCornerShape(24.dp),
-        colors = CardDefaults.cardColors(containerColor = cardColor)
+private fun DeviceDetailsSection(androidVersion: String, onSeeAll: () -> Unit) {
+  Column {
+    Text(
+      "Device details",
+      style = MaterialTheme.typography.labelLarge,
+      color = MaterialTheme.colorScheme.primary,
+      modifier = Modifier.padding(vertical = 8.dp),
+    )
+
+    Spacer(Modifier.height(8.dp))
+
+    Text(
+      "Android version",
+      style = MaterialTheme.typography.bodyLarge,
+      color = MaterialTheme.colorScheme.onSurface,
+    )
+    Text(
+      androidVersion,
+      style = MaterialTheme.typography.bodyMedium,
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
+
+    Spacer(Modifier.height(16.dp))
+
+    Row(
+      modifier = Modifier.fillMaxWidth().clickable(onClick = onSeeAll).padding(vertical = 12.dp),
+      verticalAlignment = Alignment.CenterVertically,
     ) {
-        Row(Modifier.padding(20.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(
-                Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.primaryContainer),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(icon, null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(26.dp))
-            }
-            Spacer(Modifier.width(16.dp))
-            Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold))
-                Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Icon(Icons.Outlined.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
-        }
+      Icon(
+        Icons.Outlined.ChevronRight,
+        contentDescription = null,
+        modifier = Modifier.size(24.dp),
+        tint = MaterialTheme.colorScheme.onSurface,
+      )
+      Spacer(Modifier.width(8.dp))
+      Text(
+        "See all",
+        style = MaterialTheme.typography.bodyLarge,
+        color = MaterialTheme.colorScheme.onSurface,
+      )
     }
+  }
 }
 
 @Composable
-fun AxionAboutScreenPreview() {
-    AxionAboutScreen(onNavigateBack = {}, onNavigateToDeviceInfo = {}, onEditDeviceName = {})
+private fun StatusChip(
+  buildType: String,
+  maintainer: String,
+) {
+  val isOfficial = buildType.lowercase() in listOf("official", "stable")
+  val containerColor = if (isOfficial) MaterialTheme.colorScheme.secondaryContainer
+    else MaterialTheme.colorScheme.surfaceContainerHigh
+  val contentColor = if (isOfficial) MaterialTheme.colorScheme.onSecondaryContainer
+    else MaterialTheme.colorScheme.onSurface
+
+  Surface(
+    shape = RoundedCornerShape(20.dp),
+    color = containerColor,
+  ) {
+    Row(
+      modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+      horizontalArrangement = Arrangement.spacedBy(4.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      if (isOfficial) {
+        Icon(
+          imageVector = Icons.Outlined.Verified,
+          contentDescription = null,
+          modifier = Modifier.size(12.dp),
+          tint = contentColor,
+        )
+      }
+      Text(
+        text = if (isOfficial) "$buildType · $maintainer" else maintainer,
+        style = MaterialTheme.typography.labelSmall,
+        color = contentColor,
+        maxLines = 1,
+      )
+    }
+  }
+}
+
+@Composable
+private fun DeviceNameDialog(
+  currentName: String,
+  onConfirm: (String) -> Unit,
+  onDismiss: () -> Unit,
+) {
+  var text by remember { mutableStateOf(currentName) }
+  AlertDialog(
+    onDismissRequest = onDismiss,
+    title = { Text("Edit device name") },
+    text = {
+      OutlinedTextField(
+        value = text,
+        onValueChange = { text = it },
+        label = { Text("Device name") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+      )
+    },
+    confirmButton = {
+      TextButton(
+        onClick = {
+          if (text.isNotBlank()) {
+            onConfirm(text.trim())
+          }
+          onDismiss()
+        }
+      ) {
+        Text("Save")
+      }
+    },
+    dismissButton = { TextButton(onClick = onDismiss) { Text("Cancel") } },
+  )
 }

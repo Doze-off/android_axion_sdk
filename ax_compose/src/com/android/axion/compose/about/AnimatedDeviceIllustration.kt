@@ -188,7 +188,7 @@ private fun DeviceFrame(
 }
 
 @Composable
-private fun AnimatedAtom(
+internal fun AnimatedAtom(
     modifier: Modifier = Modifier,
     primaryColor: Color,
     tertiaryColor: Color

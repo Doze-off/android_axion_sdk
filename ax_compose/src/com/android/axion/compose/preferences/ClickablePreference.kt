@@ -53,7 +53,7 @@ fun ClickablePreference(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 60.dp)
+            .heightIn(min = 72.dp)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceBright)
             .clickable(
@@ -84,7 +84,7 @@ fun ClickablePreference(
                     modifier = Modifier.size(24.dp)
                 )
             }
-            Spacer(modifier = Modifier.width(8.dp))
+            Spacer(modifier = Modifier.width(12.dp))
         }
         
         Column(
