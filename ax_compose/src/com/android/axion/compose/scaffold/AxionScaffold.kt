@@ -44,7 +44,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.nestedscroll.nestedScroll
-import androidx.compose.ui.text.font.FontWeight
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -100,14 +99,14 @@ private fun AxionTopAppBar(
         title = {
             Text(
                 text = title,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLargeEmphasized,
             )
         },
         navigationIcon = {
             ExpressiveBackButton(onClick = onBackClick)
         },
         actions = actions,
-        colors = TopAppBarDefaults.largeTopAppBarColors(
+        colors = TopAppBarDefaults.topAppBarColors(
             containerColor = Color.Transparent,
             scrolledContainerColor = Color.Transparent,
         ),

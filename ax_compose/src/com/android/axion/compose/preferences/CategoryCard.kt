@@ -42,10 +42,11 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun CategoryCard(
     title: String,
@@ -100,14 +101,14 @@ fun CategoryCard(
             
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLargeEmphasized,
                 color = Color.White
             )
         }
     }
 }
 
+@OptIn(ExperimentalMaterial3ExpressiveApi::class)
 @Composable
 fun CategoryCardTonal(
     title: String,
@@ -159,8 +160,7 @@ fun CategoryCardTonal(
             
             Text(
                 text = title,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.titleLargeEmphasized,
                 color = MaterialTheme.colorScheme.onSurface
             )
         }

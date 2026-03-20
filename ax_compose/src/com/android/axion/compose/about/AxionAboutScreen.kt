@@ -78,10 +78,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLayoutDirection
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.android.axion.compose.scaffold.AxionScaffold
 import com.android.axion.deviceinfo.DeviceInfoProvider
 import kotlinx.coroutines.Dispatchers
@@ -222,18 +221,16 @@ private fun BannerSection(
               verticalArrangement = Arrangement.SpaceBetween,
             ) {
               Column {
+                @OptIn(ExperimentalMaterial3ExpressiveApi::class)
                 Text(
                   "AXIONOS",
-                  style =
-                    MaterialTheme.typography.titleMedium.copy(
-                      fontWeight = FontWeight.Bold,
-                      letterSpacing = 1.sp,
-                    ),
+                  style = MaterialTheme.typography.titleMediumEmphasized,
                   color = MaterialTheme.colorScheme.onSurface,
                 )
+                @OptIn(ExperimentalMaterial3ExpressiveApi::class)
                 Text(
                   version,
-                  style = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.Bold),
+                  style = MaterialTheme.typography.headlineLargeEmphasized,
                   color = MaterialTheme.colorScheme.onSurface,
                 )
               }
@@ -250,9 +247,10 @@ private fun BannerSection(
               modifier = Modifier.fillMaxSize().padding(20.dp),
               contentAlignment = Alignment.BottomStart,
             ) {
+              @OptIn(ExperimentalMaterial3ExpressiveApi::class)
               Text(
                 deviceName,
-                style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
+                style = MaterialTheme.typography.titleMediumEmphasized,
                 color = MaterialTheme.colorScheme.onSurface,
               )
             }
@@ -432,9 +430,10 @@ private fun SpecItem(
       modifier = Modifier.size(24.dp),
     )
     Spacer(Modifier.height(12.dp))
+    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     Text(
       title,
-      style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.Bold),
+      style = MaterialTheme.typography.titleSmallEmphasized,
       color = MaterialTheme.colorScheme.onSurface,
     )
     Spacer(Modifier.height(2.dp))
@@ -449,9 +448,10 @@ private fun SpecItem(
 @Composable
 private fun DeviceDetailsSection(androidVersion: String, onSeeAll: () -> Unit) {
   Column {
+    @OptIn(ExperimentalMaterial3ExpressiveApi::class)
     Text(
       "Device details",
-      style = MaterialTheme.typography.labelLarge,
+      style = MaterialTheme.typography.labelLargeEmphasized,
       color = MaterialTheme.colorScheme.primary,
       modifier = Modifier.padding(vertical = 8.dp),
     )

@@ -27,11 +27,11 @@ import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.SideEffect
+import androidx.compose.material3.LocalContentColor
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
-
 import androidx.core.view.WindowCompat
 
 @Composable
@@ -40,10 +40,7 @@ fun AxionTheme(
     content: @Composable () -> Unit
 ) {
     val context = LocalContext.current
-    val baseScheme = if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-    val colorScheme = baseScheme.copy(
-        background = baseScheme.surfaceContainer
-    )
+    val colorScheme = if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
     
     val view = LocalView.current
     if (!view.isInEditMode) {
@@ -54,11 +51,18 @@ fun AxionTheme(
         }
     }
 
+    val typography = rememberAxionTypography()
+
     MaterialExpressiveTheme(
         colorScheme = colorScheme,
+        typography = typography,
         motionScheme = MotionScheme.expressive(),
-        content = content
-    )
+    ) {
+        CompositionLocalProvider(
+            LocalContentColor provides MaterialTheme.colorScheme.onSurface,
+            content = content
+        )
+    }
 }
 
 object AxionColors {

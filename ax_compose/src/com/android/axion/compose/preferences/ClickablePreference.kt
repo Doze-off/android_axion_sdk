@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2025 AxionOS Project
+ * Copyright (C) 2025-2026 AxionOS
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -16,18 +16,17 @@
 
 package com.android.axion.compose.preferences
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.OpenInNew
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
+import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.unit.dp
@@ -37,85 +36,39 @@ fun ClickablePreference(
     title: String,
     summary: String? = null,
     icon: ImageVector? = null,
+    customIcon: @Composable (() -> Unit)? = null,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     showExternalIcon: Boolean = false,
     iconTint: Color? = null,
     iconBackgroundColor: Color? = null,
-    position: PreferencePosition = LocalPreferencePosition.current
+    position: PreferencePosition = LocalPreferencePosition.current,
+    enlargeTitle: Boolean = false,
 ) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val shape = preferenceShape(position)
-    val resolvedIconTint = iconTint ?: if (enabled) MaterialTheme.colorScheme.onSurfaceVariant
-                                       else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .heightIn(min = 72.dp)
-            .clip(shape)
-            .background(MaterialTheme.colorScheme.surfaceBright)
-            .clickable(
-                interactionSource = interactionSource,
-                indication = ripple(),
-                enabled = enabled,
-                onClick = onClick
-            )
-            .padding(start = 16.dp, end = 20.dp, top = 10.dp, bottom = 10.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-
-        if (icon != null) {
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .then(
-                        if (iconBackgroundColor != null) Modifier.background(iconBackgroundColor)
-                        else Modifier
-                    ),
-                contentAlignment = Alignment.Center
-            ) {
+    BasePreference(
+        title = title,
+        summary = summary,
+        icon = icon,
+        customIcon = customIcon,
+        enabled = enabled,
+        iconTint = iconTint,
+        iconBackgroundColor = iconBackgroundColor,
+        position = position,
+        enlargeTitle = enlargeTitle,
+        modifier = modifier.clickable(enabled = enabled, onClick = onClick),
+        widget = if (showExternalIcon) {
+            {
+                Spacer(modifier = Modifier.width(8.dp))
                 Icon(
-                    imageVector = icon,
+                    imageVector = @Suppress("DEPRECATION") Icons.Outlined.OpenInNew,
                     contentDescription = null,
-                    tint = resolvedIconTint,
-                    modifier = Modifier.size(24.dp)
+                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier
+                        .size(20.dp)
+                        .alpha(if (enabled) 1f else 0.38f),
                 )
             }
-            Spacer(modifier = Modifier.width(12.dp))
-        }
-        
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.Center
-        ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.bodyLarge,
-                color = if (enabled) MaterialTheme.colorScheme.onSurface 
-                        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-            )
-            if (summary != null) {
-                Text(
-                    text = summary,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant 
-                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
-                )
-            }
-        }
-        
-        if (showExternalIcon) {
-            Spacer(modifier = Modifier.width(8.dp))
-            Icon(
-                imageVector = Icons.Outlined.OpenInNew,
-                contentDescription = null,
-                tint = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant 
-                       else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f),
-                modifier = Modifier.size(20.dp)
-            )
-        }
-    }
+        } else null,
+    )
 }

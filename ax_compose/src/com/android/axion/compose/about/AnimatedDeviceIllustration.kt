@@ -38,9 +38,8 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import kotlin.math.cos
 import kotlin.math.sin
 
@@ -174,12 +173,10 @@ private fun DeviceFrame(
                 
                 Spacer(modifier = Modifier.height(4.dp))
                 
+                @OptIn(ExperimentalMaterial3ExpressiveApi::class)
                 Text(
                     text = "AxionOS",
-                    style = MaterialTheme.typography.labelSmall.copy(
-                        fontWeight = FontWeight.Light,
-                        letterSpacing = 1.5.sp
-                    ),
+                    style = MaterialTheme.typography.labelSmallEmphasized,
                     color = onSurfaceColor.copy(alpha = 0.7f)
                 )
             }

@@ -16,8 +16,12 @@
 
 package com.android.axion.compose.preferences
 
+import android.content.res.Configuration
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Shapes
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 val ExpressiveShapes = Shapes(
@@ -27,3 +31,12 @@ val ExpressiveShapes = Shapes(
     large = RoundedCornerShape(28.dp),
     extraLarge = RoundedCornerShape(32.dp)
 )
+
+@Composable
+fun dialogWidth(): Dp {
+    val configuration = LocalConfiguration.current
+    return configuration.screenWidthDp.dp * when (configuration.orientation) {
+        Configuration.ORIENTATION_LANDSCAPE -> 0.65f
+        else -> 0.85f
+    }
+}

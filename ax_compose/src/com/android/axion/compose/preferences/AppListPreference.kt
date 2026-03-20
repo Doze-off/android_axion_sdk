@@ -17,11 +17,7 @@
 package com.android.axion.compose.preferences
 
 import android.content.pm.PackageManager
-import android.database.ContentObserver
 import android.graphics.drawable.Drawable
-import android.os.Handler
-import android.os.Looper
-import android.provider.Settings
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -57,7 +53,6 @@ import androidx.compose.material3.InputChipDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -69,7 +64,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.ui.unit.dp
 import androidx.core.graphics.drawable.toBitmap
 import kotlinx.coroutines.Dispatchers
@@ -90,35 +85,16 @@ fun AppListPreference(
     position: PreferencePosition = LocalPreferencePosition.current,
 ) {
     val context = LocalContext.current
-    val contentResolver = context.contentResolver
     val packageManager = context.packageManager
     val shape = preferenceShape(position)
 
-    var selectedPackages by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val flow = rememberSettingsFlow(SettingsType.SECURE)
+    val savedString by rememberSettingString(settingKey, SettingsType.SECURE)
+    val selectedPackages = remember(savedString) {
+        if (savedString.isEmpty()) emptySet()
+        else savedString.split(",").filter { it.isNotEmpty() }.toSet()
+    }
     var appsInfo by remember { mutableStateOf<List<AppInfo>>(emptyList()) }
-
-    fun loadApps() {
-        val saved = Settings.Secure.getString(contentResolver, settingKey) ?: ""
-        selectedPackages =
-            if (saved.isEmpty()) emptySet() else saved.split(",").filter { it.isNotEmpty() }.toSet()
-    }
-
-    LaunchedEffect(Unit) { loadApps() }
-
-    DisposableEffect(settingKey) {
-        val observer =
-            object : ContentObserver(Handler(Looper.getMainLooper())) {
-                override fun onChange(selfChange: Boolean) {
-                    loadApps()
-                }
-            }
-        contentResolver.registerContentObserver(
-            Settings.Secure.getUriFor(settingKey),
-            false,
-            observer,
-        )
-        onDispose { contentResolver.unregisterContentObserver(observer) }
-    }
 
     LaunchedEffect(selectedPackages) {
         withContext(Dispatchers.IO) {
@@ -150,7 +126,7 @@ fun AppListPreference(
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.bodyLarge,
+            style = MaterialTheme.typography.titleMedium,
             color = MaterialTheme.colorScheme.onSurface,
         )
 
@@ -179,9 +155,7 @@ fun AppListPreference(
                         selected = true,
                         onClick = {
                             val newPackages = selectedPackages - app.packageName
-                            val value = newPackages.joinToString(",")
-                            Settings.Secure.putString(contentResolver, settingKey, value)
-                            selectedPackages = newPackages
+                            flow.putString(settingKey, newPackages.joinToString(","))
                         },
                         label = { Text(app.label) },
                         leadingIcon = {
@@ -273,10 +247,10 @@ private fun AppListAddButton(text: String, onClick: () -> Unit) {
             modifier = Modifier.size(20.dp),
         )
         Spacer(modifier = Modifier.width(8.dp))
+        @OptIn(ExperimentalMaterial3ExpressiveApi::class)
         Text(
             text = text,
-            style = MaterialTheme.typography.labelLarge,
-            fontWeight = FontWeight.SemiBold,
+            style = MaterialTheme.typography.labelLargeEmphasized,
             color = MaterialTheme.colorScheme.onPrimary,
         )
     }

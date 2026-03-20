@@ -41,7 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.ui.unit.dp
 
 @Composable
@@ -63,10 +63,10 @@ fun SettingsSection(
                 .fillMaxWidth()
                 .padding(vertical = 12.dp)
         ) {
+            @OptIn(ExperimentalMaterial3ExpressiveApi::class)
             Text(
                 text = title.uppercase(),
-                style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.Bold,
+                style = MaterialTheme.typography.labelMediumEmphasized,
                 color = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.padding(start = 4.dp, bottom = 12.dp)
             )
@@ -119,10 +119,10 @@ fun SettingsSectionTonal(
                         modifier = Modifier.size(22.dp)
                     )
                 }
+                @OptIn(ExperimentalMaterial3ExpressiveApi::class)
                 Text(
                     text = title,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
+                    style = MaterialTheme.typography.titleMediumEmphasized,
                     color = MaterialTheme.colorScheme.onSurface
                 )
             }
