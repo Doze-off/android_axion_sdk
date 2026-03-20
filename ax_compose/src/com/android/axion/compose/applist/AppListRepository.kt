@@ -39,6 +39,7 @@ enum class AppFilter {
 
 data class AppEntry(
     val packageName: String,
+    val className: String,
     val label: String,
     val icon: Drawable,
     val isSystem: Boolean,
@@ -64,8 +65,11 @@ fun rememberAppList(vararg filters: AppFilter): State<List<AppEntry>> {
                     pm.getLaunchIntentForPackage(info.packageName) == null) return@mapNotNull null
 
                 val icon = runCatching { info.loadIcon(pm) }.getOrNull() ?: return@mapNotNull null
+                val className = pm.getLaunchIntentForPackage(info.packageName)
+                    ?.component?.className ?: ""
                 AppEntry(
                     packageName = info.packageName,
+                    className = className,
                     label = info.loadLabel(pm).toString(),
                     icon = icon,
                     isSystem = isSystem,
