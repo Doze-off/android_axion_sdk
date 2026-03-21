@@ -1,0 +1,33 @@
+package {
+    default_visibility: ["//visibility:public"],
+    default_applicable_licenses: ["Android-Apache-2.0"],
+}
+
+android_library {
+    name: "ax_ocr",
+    srcs: ["src/**/*.kt"],
+    asset_dirs: ["assets"],
+    aaptflags: ["-0 .tflite"],
+    resource_dirs: ["res"],
+
+    static_libs: [
+        "tensorflowlite_java",
+        "tflite_support_java",
+        "tensorflow-lite-gpu",
+        "tensorflow-lite-gpu-api",
+        "androidx.annotation_annotation",
+        "kotlinx_coroutines",
+    ],
+
+    required: [
+        "libtensorflowlite_jni",
+        "libtensorflowlite_gpu_jni",
+    ],
+
+    sdk_version: "system_current",
+    min_sdk_version: "33",
+
+    kotlincflags: [
+        "-Xjvm-default=all",
+    ],
+}
