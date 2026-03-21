@@ -76,6 +76,8 @@ public class AxPlatformClient {
     public static final String FEATURE_CAST = "cast";
     public static final String FEATURE_PROFILES = "profiles";
     public static final String FEATURE_SMART_PIXELS = "smart_pixels";
+    public static final String FEATURE_SCREEN_RECORD = "screen_record";
+    public static final String FEATURE_SCREENSHOT = "screenshot";
 
     public static final String KEY_WIFI_SCAN = "wifi_scan";
     public static final String KEY_BATTERY = "battery";
@@ -85,6 +87,7 @@ public class AxPlatformClient {
     public static final String KEY_CONFIG = "config";
     public static final String KEY_DOZE = "doze";
     public static final String KEY_KEYGUARD = "keyguard";
+    public static final String KEY_NOW_PLAYING = "now_playing";
 
     public static final String ACTION_WIFI_CONNECT = "wifi_connect";
     public static final String ACTION_BT_CONNECT = "bt_connect";
@@ -155,6 +158,9 @@ public class AxPlatformClient {
         SPEC_TO_FEATURE.put("cast", FEATURE_CAST);
         SPEC_TO_FEATURE.put("profiles", FEATURE_PROFILES);
         SPEC_TO_FEATURE.put("smart_pixels", FEATURE_SMART_PIXELS);
+        SPEC_TO_FEATURE.put("screen_record", FEATURE_SCREEN_RECORD);
+        SPEC_TO_FEATURE.put("screenrecord", FEATURE_SCREEN_RECORD);
+        SPEC_TO_FEATURE.put("screenshot", FEATURE_SCREENSHOT);
 
         FEATURE_TO_CATEGORY.put(FEATURE_WIFI, CATEGORY_CONNECTIVITY);
         FEATURE_TO_CATEGORY.put(FEATURE_MOBILE_DATA, CATEGORY_CONNECTIVITY);
@@ -189,6 +195,8 @@ public class AxPlatformClient {
         FEATURE_TO_CATEGORY.put(FEATURE_CAST, CATEGORY_CONNECTIVITY);
         FEATURE_TO_CATEGORY.put(FEATURE_PROFILES, CATEGORY_SYSTEM);
         FEATURE_TO_CATEGORY.put(FEATURE_SMART_PIXELS, CATEGORY_DISPLAY);
+        FEATURE_TO_CATEGORY.put(FEATURE_SCREEN_RECORD, CATEGORY_SYSTEM);
+        FEATURE_TO_CATEGORY.put(FEATURE_SCREENSHOT, CATEGORY_SYSTEM);
     }
 
     @Nullable
@@ -262,6 +270,7 @@ public class AxPlatformClient {
         public void onAlarmChanged(long triggerTime, String packageName) {}
         public void onCalendarChanged(String title, long startTime, long endTime,
                 String location) {}
+        public void onNowPlayingChanged(String action, Bundle data) {}
         public void onFeatureChanged(String feature, boolean active) {}
         public void onStateChanged(String key, Bundle state) {}
     }
@@ -363,7 +372,12 @@ public class AxPlatformClient {
     private void call(String method, RemoteAction action) {
         try {
             IAxPlatformService service = getService();
-            if (service != null) action.run(service);
+            if (service != null) {
+                action.run(service);
+            } else {
+                Log.w(TAG, method + ": service not connected, attempting rebind");
+                bind();
+            }
         } catch (RemoteException e) {
             Log.e(TAG, method, e);
         }
@@ -426,7 +440,7 @@ public class AxPlatformClient {
         IAxPlatformCallback callback = new IAxPlatformCallback.Stub() {
             @Override
             public void onStateChanged(String key, Bundle state) {
-                dispatchToListener(listener, key, state);
+                mHandler.post(() -> dispatchToListener(listener, key, state));
             }
         };
         mListeners.put(listener, callback);
@@ -489,6 +503,11 @@ public class AxPlatformClient {
                         state.getLong("endTime", 0L),
                         state.getString("location", ""));
                 break;
+            case KEY_NOW_PLAYING:
+                listener.onNowPlayingChanged(
+                        state.getString("action", ""),
+                        state);
+                break;
             default:
                 if (state.containsKey("active")) {
                     listener.onFeatureChanged(key, state.getBoolean("active"));
@@ -507,6 +526,10 @@ public class AxPlatformClient {
 
     public boolean isFeatureActive(String feature) {
         return getState(feature).getBoolean("active", false);
+    }
+
+    public boolean isFeatureStarting(String feature) {
+        return getState(feature).getBoolean("starting", false);
     }
 
     public boolean isFeatureAvailable(String feature) {
