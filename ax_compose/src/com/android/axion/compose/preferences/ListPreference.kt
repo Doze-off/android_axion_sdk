@@ -83,10 +83,12 @@ fun ListPreference(
     position: PreferencePosition = LocalPreferencePosition.current
 ) {
     var showDialog by remember { mutableStateOf(false) }
+    val selectedLabel = options.firstOrNull { it.first == value }?.second
+    val displaySummary = selectedLabel ?: summary
 
     BasePreference(
         title = title,
-        summary = summary,
+        summary = displaySummary,
         enabled = enabled,
         position = position,
         modifier = modifier.clickable(enabled = enabled) { showDialog = true },

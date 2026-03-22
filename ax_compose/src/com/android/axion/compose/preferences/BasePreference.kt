@@ -61,11 +61,12 @@ fun BasePreference(
     val resolvedIconTint = iconTint ?: MaterialTheme.colorScheme.onSurfaceVariant
 
     Row(
-        modifier = modifier
+        modifier = Modifier
             .fillMaxWidth()
             .heightIn(min = if (hasSummary) 72.dp else 60.dp)
             .clip(shape)
             .background(MaterialTheme.colorScheme.surfaceBright)
+            .then(modifier)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
