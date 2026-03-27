@@ -21,6 +21,7 @@ import android.graphics.drawable.BitmapDrawable
 import android.os.Build
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.basicMarquee
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -71,6 +72,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.IntSize
@@ -112,7 +114,7 @@ fun AxionAboutScreen(
         val aspectRatio = if (isTablet) 1.4f else 0.48f
         val targetW = if (isTablet) (illustrationHeightPx * aspectRatio).toInt() else (illustrationHeightPx * aspectRatio).toInt()
         val targetH = illustrationHeightPx
-        val scale = minOf(targetW.toFloat() / original.width, targetH.toFloat() / original.height)
+        val scale = maxOf(targetW.toFloat() / original.width, targetH.toFloat() / original.height)
         Bitmap.createScaledBitmap(
           original,
           (original.width * scale).toInt(),
@@ -521,9 +523,15 @@ private fun StatusChip(
       }
       Text(
         text = if (isOfficial) "$buildType · $maintainer" else maintainer,
-        style = MaterialTheme.typography.labelSmall,
+        style = MaterialTheme.typography.labelSmall.copy(
+          lineHeightStyle = LineHeightStyle(
+            alignment = LineHeightStyle.Alignment.Center,
+            trim = LineHeightStyle.Trim.Both,
+          ),
+        ),
         color = contentColor,
-        maxLines = 1,
+        softWrap = false,
+        modifier = Modifier.basicMarquee(),
       )
     }
   }
