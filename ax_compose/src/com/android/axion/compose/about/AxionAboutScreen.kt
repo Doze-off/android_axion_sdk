@@ -18,7 +18,6 @@ package com.android.axion.compose.about
 import android.app.WallpaperManager
 import android.graphics.Bitmap
 import android.graphics.drawable.BitmapDrawable
-import android.os.Build
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.basicMarquee
@@ -146,7 +145,7 @@ fun AxionAboutScreen(
           version = deviceInfo.axionVersion,
           buildType = deviceInfo.axionBuildType,
           maintainer = deviceInfo.maintainer,
-          deviceName = Build.MODEL,
+          deviceName = deviceInfo.deviceName,
           wallpaperHolder = wallpaperHolder,
           isTablet = isTablet,
           onDeviceNameClick = { showEditDialog = true },
