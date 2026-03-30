@@ -82,6 +82,9 @@ import androidx.compose.ui.platform.LocalLayoutDirection
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.compose.ui.unit.dp
+import android.provider.Settings
+import com.android.axion.compose.preferences.SettingsType
+import com.android.axion.compose.preferences.rememberSettingString
 import com.android.axion.compose.scaffold.AxionScaffold
 import com.android.axion.deviceinfo.DeviceInfoProvider
 import kotlinx.coroutines.Dispatchers
@@ -99,7 +102,12 @@ fun AxionAboutScreen(
 ) {
   val context = LocalContext.current
   val isTablet = LocalConfiguration.current.smallestScreenWidthDp >= 600
-  var deviceInfo by remember { mutableStateOf(DeviceInfoProvider.getDeviceInfo(context)) }
+  val deviceInfo = remember { DeviceInfoProvider.getDeviceInfo(context) }
+  val deviceName by rememberSettingString(
+    key = Settings.Global.DEVICE_NAME,
+    type = SettingsType.GLOBAL,
+    default = deviceInfo.deviceName,
+  )
   var showEditDialog by remember { mutableStateOf(false) }
   var wallpaperHolder by remember { mutableStateOf(StableImageBitmap(null)) }
   val density = LocalDensity.current
@@ -145,7 +153,7 @@ fun AxionAboutScreen(
           version = deviceInfo.axionVersion,
           buildType = deviceInfo.axionBuildType,
           maintainer = deviceInfo.maintainer,
-          deviceName = deviceInfo.deviceName,
+          deviceName = deviceName,
           wallpaperHolder = wallpaperHolder,
           isTablet = isTablet,
           onDeviceNameClick = { showEditDialog = true },
@@ -174,10 +182,9 @@ fun AxionAboutScreen(
 
   if (showEditDialog) {
     DeviceNameDialog(
-      currentName = deviceInfo.deviceName,
+      currentName = deviceName,
       onConfirm = { name ->
         DeviceInfoProvider.setDeviceName(context, name)
-        deviceInfo = deviceInfo.copy(deviceName = name)
         onEditDeviceName(name)
       },
       onDismiss = { showEditDialog = false },
