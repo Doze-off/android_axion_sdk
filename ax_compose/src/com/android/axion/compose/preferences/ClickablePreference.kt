@@ -16,7 +16,7 @@
 
 package com.android.axion.compose.preferences
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -38,6 +38,7 @@ fun ClickablePreference(
     icon: ImageVector? = null,
     customIcon: @Composable (() -> Unit)? = null,
     onClick: () -> Unit,
+    onLongClick: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     showExternalIcon: Boolean = false,
@@ -56,7 +57,7 @@ fun ClickablePreference(
         iconBackgroundColor = iconBackgroundColor,
         position = position,
         enlargeTitle = enlargeTitle,
-        modifier = modifier.clickable(enabled = enabled, onClick = onClick),
+        modifier = modifier.combinedClickable(enabled = enabled, onClick = onClick, onLongClick = onLongClick),
         widget = if (showExternalIcon) {
             {
                 Spacer(modifier = Modifier.width(8.dp))
