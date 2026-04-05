@@ -21,6 +21,8 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.platform.ComposeView
+import androidx.compose.ui.platform.compositionContext
+import androidx.compose.ui.platform.createLifecycleAwareWindowRecomposer
 import com.android.axion.compose.lifecycle.AxComposeInitializer
 import com.android.axion.compose.lifecycle.AxViewCompositionStrategy
 
@@ -53,12 +55,14 @@ class AxComposeView @JvmOverloads constructor(
 
     override fun onAttachedToWindow() {
         AxComposeInitializer.onAttachedToWindow(this)
+        compositionContext = createLifecycleAwareWindowRecomposer()
         super.onAttachedToWindow()
     }
 
     override fun onDetachedFromWindow() {
         super.onDetachedFromWindow()
         AxComposeInitializer.onDetachedFromWindow(this)
+        compositionContext = null
     }
 
     fun setContent(content: @Composable () -> Unit) {
