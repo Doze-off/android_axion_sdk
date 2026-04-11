@@ -10,6 +10,8 @@ android_library {
         "src/**/*.kt",
     ],
 
+    resource_dirs: ["res"],
+
     static_libs: [
         "ax_deviceinfo",
         "PlatformAnimationLib",

@@ -16,6 +16,7 @@
 
 package com.android.axion.compose.preferences
 
+import android.widget.Toast
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
@@ -50,8 +51,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.material3.ExperimentalMaterial3ExpressiveApi
+import androidx.compose.ui.res.stringResource
+import com.android.axion.compose.R
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import kotlin.math.roundToInt
@@ -117,13 +121,17 @@ fun SliderPreference(
                 )
 
                 if (onReset != null && enabled) {
+                    val resetHint = stringResource(R.string.long_press_to_reset)
+                    val toastContext = LocalContext.current
                     Spacer(modifier = Modifier.width(16.dp))
                     Box(
                         modifier = Modifier
                             .size(24.dp)
                             .clip(CircleShape)
                             .combinedClickable(
-                                onClick = {},
+                                onClick = {
+                                    Toast.makeText(toastContext, resetHint, Toast.LENGTH_SHORT).show()
+                                },
                                 onLongClick = {
                                     haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                     onReset()
