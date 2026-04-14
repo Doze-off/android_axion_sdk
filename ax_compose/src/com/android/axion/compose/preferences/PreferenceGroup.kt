@@ -31,7 +31,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.shape.CornerSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.ExpandMore
@@ -80,7 +79,7 @@ fun PreferenceGroup(
 
     var expanded by rememberSaveable { mutableStateOf(initiallyExpanded) }
     val chevronRotation by animateFloatAsState(
-        targetValue = if (expanded) 0f else -90f,
+        targetValue = if (expanded) 180f else 0f,
         animationSpec = MaterialTheme.motionScheme.fastSpatialSpec(),
         label = "chevron",
     )
@@ -91,12 +90,14 @@ fun PreferenceGroup(
         if (title != null) {
             if (collapsible) {
                 val titleShape = if (expanded) {
-                    MaterialTheme.shapes.large.copy(
-                        bottomStart = CornerSize(0.dp),
-                        bottomEnd = CornerSize(0.dp),
+                    RoundedCornerShape(
+                        topStart = 28.dp,
+                        topEnd = 28.dp,
+                        bottomStart = 4.dp,
+                        bottomEnd = 4.dp,
                     )
                 } else {
-                    MaterialTheme.shapes.large
+                    RoundedCornerShape(28.dp)
                 }
                 Row(
                     modifier = Modifier
