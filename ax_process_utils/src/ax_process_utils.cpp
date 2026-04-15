@@ -28,7 +28,9 @@ static cpu_set_t g_small_cpu_set;
 static cpu_set_t g_big_cpu_set;
 static cpu_set_t g_all_cpu_set;
 static cpu_set_t g_balanced_cpu_set;
-static std::once_flag g_cpu_sets_initialized;
+static cpu_set_t g_prime_cpu_set;
+static std::mutex g_init_mutex;
+static bool g_cpu_sets_initialized = false;
 
 bool ParseCpuset(const std::string& cpus, cpu_set_t* cpu_set) {
     if (!cpu_set) return false;
@@ -66,12 +68,14 @@ static void initialize_cpuset() {
     CPU_ZERO(&g_big_cpu_set);
     CPU_ZERO(&g_all_cpu_set);
     CPU_ZERO(&g_balanced_cpu_set);
+    CPU_ZERO(&g_prime_cpu_set);
 
     std::string small_str = android::base::GetProperty("persist.sys.axion_cpu_small", "0,1,2,3");
     std::string big_str   = android::base::GetProperty("persist.sys.axion_cpu_big", "4,5,6,7");
     std::string prime_str = android::base::GetProperty("persist.sys.axion_cpu_prime", "");
 
     if (!prime_str.empty()) {
+        ParseCpuset(prime_str, &g_prime_cpu_set);
         big_str += "," + prime_str;
     }
 
@@ -81,6 +85,16 @@ static void initialize_cpuset() {
     int max_cpus = sysconf(_SC_NPROCESSORS_ONLN);
     for (int i = 0; i < max_cpus && i < CPU_SETSIZE; ++i)
         CPU_SET(i, &g_all_cpu_set);
+
+    if (CPU_COUNT(&g_small_cpu_set) == 0) {
+        g_small_cpu_set = g_all_cpu_set;
+    }
+    if (CPU_COUNT(&g_big_cpu_set) < 2) {
+        g_big_cpu_set = g_all_cpu_set;
+    }
+    if (CPU_COUNT(&g_prime_cpu_set) < 2) {
+        g_prime_cpu_set = g_big_cpu_set;
+    }
 
     int small_count = 0;
     int big_count = 0;
@@ -139,6 +153,9 @@ static const cpu_set_t* get_target_cpuset(int group) {
             break;
         case 3:
             target = &g_balanced_cpu_set;
+            break;
+        case 4:
+            target = &g_prime_cpu_set;
             break;
         default:
             return nullptr;
@@ -239,7 +256,13 @@ static bool set_process_affinity(int pid, const cpu_set_t* cpu_set) {
 }
 
 bool SetThreadAffinity(int tid, int group) {
-    std::call_once(g_cpu_sets_initialized, initialize_cpuset);
+    {
+        std::lock_guard<std::mutex> lock(g_init_mutex);
+        if (!g_cpu_sets_initialized) {
+            initialize_cpuset();
+            g_cpu_sets_initialized = true;
+        }
+    }
     
     const cpu_set_t* target_cpu_set = get_target_cpuset(group);
     if (!target_cpu_set) return false;
@@ -262,7 +285,13 @@ bool SetThreadAffinity(int tid, int group) {
 }
 
 bool SetThreadAffinity(int tid, int group, int length) {
-    std::call_once(g_cpu_sets_initialized, initialize_cpuset);
+    {
+        std::lock_guard<std::mutex> lock(g_init_mutex);
+        if (!g_cpu_sets_initialized) {
+            initialize_cpuset();
+            g_cpu_sets_initialized = true;
+        }
+    }
     
     const cpu_set_t* source_set = get_target_cpuset(group);
     if (!source_set) return false;
@@ -287,6 +316,12 @@ bool SetThreadAffinity(int tid, int group, int length) {
 #endif
     
     return result;
+}
+
+void RefreshCpuSets() {
+    std::lock_guard<std::mutex> lock(g_init_mutex);
+    initialize_cpuset();
+    g_cpu_sets_initialized = true;
 }
 
 } // namespace axion::process
