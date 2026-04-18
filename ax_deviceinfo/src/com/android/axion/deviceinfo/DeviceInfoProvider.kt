@@ -16,9 +16,12 @@
 package com.android.axion.deviceinfo
 
 import android.content.Context
+import android.content.Intent
+import android.content.IntentFilter
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.hardware.display.DisplayManager
+import android.os.BatteryManager
 import android.os.Build
 import android.os.SystemProperties
 import android.os.storage.StorageManager
@@ -169,10 +172,14 @@ object DeviceInfoProvider {
     }
 
     fun getBatteryCapacity(context: Context): String {
-        val capacity = PowerProfile(context)
-            .getAveragePower(PowerProfile.POWER_BATTERY_CAPACITY)
-            .roundToInt()
-        return "$capacity mAh"
+        val batteryIntent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+        val designCapacityUah = batteryIntent?.getIntExtra(BatteryManager.EXTRA_DESIGN_CAPACITY, -1) ?: -1
+        val capacityMah = if (designCapacityUah > 0) {
+            designCapacityUah / 1000
+        } else {
+            PowerProfile(context).getAveragePower(PowerProfile.POWER_BATTERY_CAPACITY).roundToInt()
+        }
+        return "$capacityMah mAh"
     }
 
     fun getScreenSize(): String {
