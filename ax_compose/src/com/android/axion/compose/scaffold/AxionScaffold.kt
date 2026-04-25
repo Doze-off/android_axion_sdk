@@ -105,6 +105,7 @@ fun AxionScaffold(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
     collapsedByDefault: Boolean = true,
+    containerColor: Color = MaterialTheme.colorScheme.surfaceContainer,
     actions: @Composable RowScope.() -> Unit = {},
     content: @Composable (PaddingValues) -> Unit,
 ) {
@@ -112,13 +113,14 @@ fun AxionScaffold(
 
     Scaffold(
         modifier = modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
+        containerColor = containerColor,
         topBar = {
             AxionTopAppBar(
                 title = title,
                 onBackClick = onBackClick,
                 scrollBehavior = scrollBehavior,
                 collapsedByDefault = collapsedByDefault,
+                containerColor = containerColor,
                 actions = actions,
             )
         },
@@ -134,11 +136,12 @@ private fun AxionTopAppBar(
     onBackClick: () -> Unit,
     scrollBehavior: TopAppBarScrollBehavior,
     collapsedByDefault: Boolean,
+    containerColor: Color,
     actions: @Composable RowScope.() -> Unit = {},
 ) {
     val colors = AxionTopAppBarColors(
-        containerColor = MaterialTheme.colorScheme.surfaceContainer,
-        scrolledContainerColor = MaterialTheme.colorScheme.surfaceContainer,
+        containerColor = containerColor,
+        scrolledContainerColor = containerColor,
         navigationIconContentColor = MaterialTheme.colorScheme.onSurface,
         titleContentColor = MaterialTheme.colorScheme.onSurface,
         actionIconContentColor = MaterialTheme.colorScheme.primary,
