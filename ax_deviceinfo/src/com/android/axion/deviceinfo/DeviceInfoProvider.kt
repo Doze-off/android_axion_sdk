@@ -18,9 +18,11 @@ package com.android.axion.deviceinfo
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
+import android.content.pm.PackageManager
 import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CameraManager
 import android.hardware.display.DisplayManager
+import android.hardware.fingerprint.FingerprintManager
 import android.os.BatteryManager
 import android.os.Build
 import android.os.SystemProperties
@@ -94,6 +96,45 @@ object DeviceInfoProvider {
 
     fun setDeviceName(context: Context, name: String) {
         Settings.Global.putString(context.contentResolver, Settings.Global.DEVICE_NAME, name)
+    }
+
+    @JvmStatic
+    fun isFingerprintBiometricSupported(context: Context): Boolean {
+        if (!context.packageManager.hasSystemFeature(PackageManager.FEATURE_FINGERPRINT)) {
+            return false
+        }
+
+        return try {
+            context.getSystemService(FingerprintManager::class.java)
+                ?.sensorPropertiesInternal
+                ?.isNotEmpty() == true
+        } catch (_: Exception) {
+            false
+        }
+    }
+
+    @JvmStatic
+    fun isUdfpsSupported(context: Context): Boolean {
+        return try {
+            if (context.resources.run {
+                    getIdentifier("config_is_powerbutton_fps", "bool", "android")
+                        .takeIf { it != 0 }
+                        ?.let { getBoolean(it) }
+                } == true) {
+                return false
+            }
+
+            context.resources.run {
+                getIdentifier("config_udfps_sensor_props", "array", "android")
+                    .takeIf { it != 0 }
+                    ?.let { getIntArray(it) }
+                    ?.isNotEmpty()
+            } == true || context.getSystemService(FingerprintManager::class.java)
+                ?.sensorPropertiesInternal
+                ?.any { it.isAnyUdfpsType } == true
+        } catch (_: Exception) {
+            false
+        }
     }
 
     fun getAxionVersion(): String {
