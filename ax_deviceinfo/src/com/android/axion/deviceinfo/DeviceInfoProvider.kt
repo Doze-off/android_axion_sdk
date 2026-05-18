@@ -194,22 +194,24 @@ object DeviceInfoProvider {
         return "${width} x ${height}"
     }
 
-    fun getFrontCameraMegapixels(context: Context): String {
-        val frontCameraInfo = SystemProperties.get("persist.sys.device_camera_info_front", "")
-        if (frontCameraInfo.isNotEmpty()) {
-            return "${frontCameraInfo}MP"
-        }
-
-        val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
-        for (cameraId in cameraManager.cameraIdList) {
-            val characteristics = cameraManager.getCameraCharacteristics(cameraId)
-            val facing = characteristics.get(CameraCharacteristics.LENS_FACING)
-            if (facing == CameraCharacteristics.LENS_FACING_FRONT) {
-                return formatMegapixels(getCameraMegapixels(characteristics))
-            }
-        }
-        return "N/A"
+    fun getFrontCameraMegapixels(context: Context): String {                                             
+      val frontCameraInfo = SystemProperties.get("persist.sys.device_camera_info_front", "")
+      if (frontCameraInfo.isNotEmpty()) {
+          return frontCameraInfo.split(",").joinToString(" + ") { "${it}MP" }
+      }
+                                                                                                    
+      val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+      val frontList = mutableListOf<String>()                                                          
+      for (cameraId in cameraManager.cameraIdList) {                                                      
+          val characteristics = cameraManager.getCameraCharacteristics(cameraId)                          
+          val facing = characteristics.get(CameraCharacteristics.LENS_FACING)                             
+          if (facing == CameraCharacteristics.LENS_FACING_FRONT) {                                             
+              frontList.add(formatMegapixels(getCameraMegapixels(characteristics)))
+          }
+      }
+      return if (frontList.isNotEmpty()) frontList.joinToString(" + ") else "N/A"
     }
+
 
     fun getRearCameraMegapixels(context: Context): String {
         val rearCameraInfo = SystemProperties.get("persist.sys.device_camera_info_rear", "")
