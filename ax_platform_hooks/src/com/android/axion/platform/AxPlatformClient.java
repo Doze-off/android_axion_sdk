@@ -78,6 +78,7 @@ public class AxPlatformClient {
     public static final String FEATURE_SMART_PIXELS = "smart_pixels";
     public static final String FEATURE_SCREEN_RECORD = "screen_record";
     public static final String FEATURE_SCREENSHOT = "screenshot";
+    public static final String FEATURE_RINGER_MODE = "ringer_mode";
 
     public static final String KEY_WIFI_SCAN = "wifi_scan";
     public static final String KEY_BATTERY = "battery";
@@ -161,6 +162,10 @@ public class AxPlatformClient {
         SPEC_TO_FEATURE.put("screen_record", FEATURE_SCREEN_RECORD);
         SPEC_TO_FEATURE.put("screenrecord", FEATURE_SCREEN_RECORD);
         SPEC_TO_FEATURE.put("screenshot", FEATURE_SCREENSHOT);
+        SPEC_TO_FEATURE.put("ringer", FEATURE_RINGER_MODE);
+        SPEC_TO_FEATURE.put("ringer_mode", FEATURE_RINGER_MODE);
+        SPEC_TO_FEATURE.put("sound", FEATURE_RINGER_MODE);
+        SPEC_TO_FEATURE.put("sound_mode", FEATURE_RINGER_MODE);
 
         FEATURE_TO_CATEGORY.put(FEATURE_WIFI, CATEGORY_CONNECTIVITY);
         FEATURE_TO_CATEGORY.put(FEATURE_MOBILE_DATA, CATEGORY_CONNECTIVITY);
@@ -197,6 +202,7 @@ public class AxPlatformClient {
         FEATURE_TO_CATEGORY.put(FEATURE_SMART_PIXELS, CATEGORY_DISPLAY);
         FEATURE_TO_CATEGORY.put(FEATURE_SCREEN_RECORD, CATEGORY_SYSTEM);
         FEATURE_TO_CATEGORY.put(FEATURE_SCREENSHOT, CATEGORY_SYSTEM);
+        FEATURE_TO_CATEGORY.put(FEATURE_RINGER_MODE, CATEGORY_SOUND);
     }
 
     @Nullable
@@ -271,6 +277,7 @@ public class AxPlatformClient {
         public void onCalendarChanged(String title, long startTime, long endTime,
                 String location) {}
         public void onNowPlayingChanged(String action, Bundle data) {}
+        public void onRingerModeChanged(int mode) {}
         public void onFeatureChanged(String feature, boolean active) {}
         public void onStateChanged(String key, Bundle state) {}
     }
@@ -508,6 +515,12 @@ public class AxPlatformClient {
                         state.getString("action", ""),
                         state);
                 break;
+            case FEATURE_RINGER_MODE:
+                listener.onRingerModeChanged(state.getInt("ringerMode", -1));
+                if (state.containsKey("active")) {
+                    listener.onFeatureChanged(key, state.getBoolean("active"));
+                }
+                break;
             default:
                 if (state.containsKey("active")) {
                     listener.onFeatureChanged(key, state.getBoolean("active"));
@@ -614,6 +627,10 @@ public class AxPlatformClient {
 
     public boolean isMediaPlaying() {
         return getState(KEY_MEDIA).getBoolean("isPlaying", false);
+    }
+
+    public int getRingerMode() {
+        return getState(FEATURE_RINGER_MODE).getInt("ringerMode", -1);
     }
 
     public String getMediaTrack() {
