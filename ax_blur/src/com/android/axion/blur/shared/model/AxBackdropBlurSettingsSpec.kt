@@ -1,0 +1,106 @@
+/*
+ * Copyright (C) 2025-2026 AxionOS
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *      http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+package com.android.axion.blur.shared.model
+
+class AxBackdropBlurSettingsSpec internal constructor(
+    internal val enabledKey: String?,
+    internal val radiusKey: String,
+    internal val defaultEnabled: Boolean,
+    internal val defaultRadiusPx: Float?,
+    internal val maxRadiusPx: Float?,
+) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) return true
+        if (other !is AxBackdropBlurSettingsSpec) return false
+        return enabledKey == other.enabledKey &&
+            radiusKey == other.radiusKey &&
+            defaultEnabled == other.defaultEnabled &&
+            defaultRadiusPx == other.defaultRadiusPx &&
+            maxRadiusPx == other.maxRadiusPx
+    }
+
+    override fun hashCode(): Int {
+        var result = enabledKey?.hashCode() ?: 0
+        result = 31 * result + radiusKey.hashCode()
+        result = 31 * result + defaultEnabled.hashCode()
+        result = 31 * result + (defaultRadiusPx?.hashCode() ?: 0)
+        result = 31 * result + (maxRadiusPx?.hashCode() ?: 0)
+        return result
+    }
+
+    companion object {
+        private const val KEY_SYSTEM_BLUR_RADIUS = "system_blur_radius"
+        private const val KEY_LAUNCHER_BLUR_ENABLED = "pulse_launcher_blur_enabled"
+        private const val KEY_LAUNCHER_BLUR_RADIUS = "pulse_launcher_blur_radius"
+        private const val DEFAULT_LAUNCHER_BLUR_RADIUS_PX = 34f
+        private const val MAX_LAUNCHER_BLUR_RADIUS_PX = 100f
+        private val SYSTEM = AxBackdropBlurSettingsSpec(
+            enabledKey = null,
+            radiusKey = KEY_SYSTEM_BLUR_RADIUS,
+            defaultEnabled = true,
+            defaultRadiusPx = null,
+            maxRadiusPx = null,
+        )
+
+        @JvmStatic
+        fun system(): AxBackdropBlurSettingsSpec {
+            return SYSTEM
+        }
+
+        @JvmStatic
+        @JvmOverloads
+        fun launcher(
+            defaultRadiusPx: Float = DEFAULT_LAUNCHER_BLUR_RADIUS_PX,
+            maxRadiusPx: Float = MAX_LAUNCHER_BLUR_RADIUS_PX,
+        ): AxBackdropBlurSettingsSpec {
+            return secure(
+                enabledKey = KEY_LAUNCHER_BLUR_ENABLED,
+                radiusKey = KEY_LAUNCHER_BLUR_RADIUS,
+                defaultEnabled = false,
+                defaultRadiusPx = defaultRadiusPx,
+                maxRadiusPx = maxRadiusPx,
+            )
+        }
+
+        @JvmStatic
+        fun secure(
+            enabledKey: String,
+            radiusKey: String,
+            defaultEnabled: Boolean,
+            defaultRadiusPx: Float,
+            maxRadiusPx: Float,
+        ): AxBackdropBlurSettingsSpec {
+            return AxBackdropBlurSettingsSpec(
+                enabledKey = enabledKey,
+                radiusKey = radiusKey,
+                defaultEnabled = defaultEnabled,
+                defaultRadiusPx = defaultRadiusPx,
+                maxRadiusPx = maxRadiusPx,
+            )
+        }
+    }
+}
+
+internal data class AxBackdropBlurSettingsModel(
+    val enabled: Boolean,
+    val blurRadiusPx: Float,
+)
+
+internal interface AxBackdropBlurSettingsSubscription {
+    fun start()
+
+    fun stop()
+}
