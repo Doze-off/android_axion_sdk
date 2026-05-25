@@ -255,15 +255,17 @@ static bool set_process_affinity(int pid, const cpu_set_t* cpu_set) {
     return success;
 }
 
-bool SetThreadAffinity(int tid, int group) {
-    {
-        std::lock_guard<std::mutex> lock(g_init_mutex);
-        if (!g_cpu_sets_initialized) {
-            initialize_cpuset();
-            g_cpu_sets_initialized = true;
-        }
+static void ensure_cpuset_initialized() {
+    std::lock_guard<std::mutex> lock(g_init_mutex);
+    if (!g_cpu_sets_initialized) {
+        initialize_cpuset();
+        g_cpu_sets_initialized = true;
     }
-    
+}
+
+bool SetThreadAffinity(int tid, int group) {
+    ensure_cpuset_initialized();
+
     const cpu_set_t* target_cpu_set = get_target_cpuset(group);
     if (!target_cpu_set) return false;
     
@@ -285,14 +287,8 @@ bool SetThreadAffinity(int tid, int group) {
 }
 
 bool SetThreadAffinity(int tid, int group, int length) {
-    {
-        std::lock_guard<std::mutex> lock(g_init_mutex);
-        if (!g_cpu_sets_initialized) {
-            initialize_cpuset();
-            g_cpu_sets_initialized = true;
-        }
-    }
-    
+    ensure_cpuset_initialized();
+
     const cpu_set_t* source_set = get_target_cpuset(group);
     if (!source_set) return false;
     
@@ -318,10 +314,32 @@ bool SetThreadAffinity(int tid, int group, int length) {
     return result;
 }
 
+bool SetSingleThreadAffinity(int tid, int group) {
+    ensure_cpuset_initialized();
+
+    const cpu_set_t* target_cpu_set = get_target_cpuset(group);
+    if (!target_cpu_set) return false;
+
+    return set_thread_affinity(tid, target_cpu_set);
+}
+
+bool SetSingleThreadAffinity(int tid, int group, int length) {
+    ensure_cpuset_initialized();
+
+    const cpu_set_t* source_set = get_target_cpuset(group);
+    if (!source_set) return false;
+
+    cpu_set_t target_set;
+    if (!build_cpuset(source_set, &target_set, length)) {
+        ALOGE("No CPUs available for group %d (tid=%d)", group, tid);
+        return false;
+    }
+
+    return set_thread_affinity(tid, &target_set);
+}
+
 void RefreshCpuSets() {
-    std::lock_guard<std::mutex> lock(g_init_mutex);
-    initialize_cpuset();
-    g_cpu_sets_initialized = true;
+    ensure_cpuset_initialized();
 }
 
 } // namespace axion::process
