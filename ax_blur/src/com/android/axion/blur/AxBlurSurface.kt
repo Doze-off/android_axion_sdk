@@ -17,6 +17,8 @@
 package com.android.axion.blur
 
 import android.provider.Settings
+import android.view.View
+import android.view.ViewTreeObserver
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
@@ -34,9 +36,16 @@ import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.node.CompositionLocalConsumerModifierNode
+import androidx.compose.ui.node.DrawModifierNode
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.node.currentValueOf
+import androidx.compose.ui.node.invalidateDraw
+import androidx.compose.ui.platform.InspectorInfo
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
@@ -181,7 +190,7 @@ fun Modifier.axBlurBackground(
         blur.setEnabled(blurEnabled)
     }
 
-    return drawWithContent {
+    return axBlurFrameTracking(blurEnabled).drawWithContent {
         val width = size.width.roundToInt()
         val height = size.height.roundToInt()
         val cornerRadiusPx = if (requestedCornerRadiusPx.isFinite()) {
@@ -213,5 +222,81 @@ fun Modifier.axBlurBackground(
             )
         }
         drawContent()
+    }
+}
+
+private fun Modifier.axBlurFrameTracking(enabled: Boolean): Modifier =
+    this then AxBlurFrameTrackingElement(enabled)
+
+private data class AxBlurFrameTrackingElement(
+    val enabled: Boolean,
+) : ModifierNodeElement<AxBlurFrameTrackingNode>() {
+    override fun create() = AxBlurFrameTrackingNode(enabled)
+
+    override fun update(node: AxBlurFrameTrackingNode) {
+        node.update(enabled)
+    }
+
+    override fun InspectorInfo.inspectableProperties() {
+        name = "axBlurFrameTracking"
+        properties["enabled"] = enabled
+    }
+}
+
+private class AxBlurFrameTrackingNode(
+    private var enabled: Boolean,
+) : Modifier.Node(),
+    CompositionLocalConsumerModifierNode,
+    DrawModifierNode {
+
+    private var hostView: View? = null
+    private var observingPreDraw = false
+    private val preDrawListener = ViewTreeObserver.OnPreDrawListener {
+        if (isAttached && enabled) {
+            invalidateDraw()
+        }
+        true
+    }
+
+    override val shouldAutoInvalidate = false
+
+    fun update(enabled: Boolean) {
+        if (this.enabled == enabled) return
+        this.enabled = enabled
+        updatePreDrawObserver()
+        invalidateDraw()
+    }
+
+    override fun onAttach() {
+        updatePreDrawObserver()
+    }
+
+    override fun onDetach() {
+        removePreDrawObserver()
+    }
+
+    override fun ContentDrawScope.draw() {
+        drawContent()
+    }
+
+    private fun updatePreDrawObserver() {
+        val view = if (isAttached && enabled) currentValueOf(LocalView) else null
+        if (hostView !== view) {
+            removePreDrawObserver()
+            hostView = view
+        }
+        if (view != null && !observingPreDraw) {
+            view.viewTreeObserver.addOnPreDrawListener(preDrawListener)
+            observingPreDraw = true
+        }
+        if (view == null) {
+            removePreDrawObserver()
+        }
+    }
+
+    private fun removePreDrawObserver() {
+        if (!observingPreDraw) return
+        hostView?.viewTreeObserver?.takeIf { it.isAlive }?.removeOnPreDrawListener(preDrawListener)
+        observingPreDraw = false
     }
 }

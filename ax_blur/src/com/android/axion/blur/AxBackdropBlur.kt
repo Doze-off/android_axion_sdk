@@ -18,6 +18,7 @@ package com.android.axion.blur
 
 import android.content.Context
 import android.view.View
+import android.view.ViewTreeObserver
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.runtime.Composable
@@ -240,6 +241,11 @@ internal class AxBackdropBlurArea {
         size = Size.Unspecified
         windowId = null
         drawingContent = false
+        notifyChanged()
+    }
+
+    fun notifyChanged() {
+        preDrawListeners.forEach { it() }
     }
 }
 
@@ -299,6 +305,14 @@ private class AxBackdropBlurSourceNode(
 
     private val area = AxBackdropBlurArea().apply { this.zIndex = zIndex }
     private var lastCoordinates: LayoutCoordinates? = null
+    private var hostView: View? = null
+    private var observingPreDraw = false
+    private val preDrawListener = ViewTreeObserver.OnPreDrawListener {
+        if (isAttached) {
+            lastCoordinates?.let { updateCoordinates(it, state.resolvedPositionStrategy) }
+        }
+        true
+    }
 
     override val shouldAutoInvalidate = false
 
@@ -312,16 +326,19 @@ private class AxBackdropBlurSourceNode(
         }
         if (area.zIndex != zIndex) {
             area.zIndex = zIndex
+            area.notifyChanged()
             invalidateDraw()
         }
     }
 
     override fun onAttach() {
         state.addArea(area)
+        updatePreDrawObserver()
         onObservedReadsChanged()
     }
 
     override fun onDetach() {
+        removePreDrawObserver()
         area.reset()
         releaseLayer()
         state.removeArea(area)
@@ -342,6 +359,7 @@ private class AxBackdropBlurSourceNode(
         val newSize = size.toSize()
         if (area.size != newSize) {
             area.size = newSize
+            area.notifyChanged()
         }
     }
 
@@ -372,12 +390,13 @@ private class AxBackdropBlurSourceNode(
             }
         } finally {
             area.drawingContent = false
-            area.preDrawListeners.forEach { it() }
+            area.notifyChanged()
         }
     }
 
     override fun onReset() {
         area.reset()
+        removePreDrawObserver()
     }
 
     private fun updateCoordinates(coordinates: LayoutCoordinates) {
@@ -392,21 +411,51 @@ private class AxBackdropBlurSourceNode(
         val newBounds = coordinates.boundsForAxBlur(strategy)
         val newPosition = newBounds?.topLeft ?: Offset.Unspecified
         val newSize = newBounds?.size ?: Size.Unspecified
-        val newWindowId = currentValueOf(LocalView).windowId
+        val newWindowId = currentWindowId()
+        var changed = false
         if (area.position != newPosition) {
             area.position = newPosition
+            changed = true
         }
         if (area.size != newSize) {
             area.size = newSize
+            changed = true
         }
         if (area.windowId != newWindowId) {
             area.windowId = newWindowId
+            changed = true
+        }
+        if (changed) {
+            area.notifyChanged()
         }
     }
 
     private fun releaseLayer() {
         area.contentLayer?.let { currentValueOf(LocalGraphicsContext).releaseGraphicsLayer(it) }
         area.contentLayer = null
+        area.notifyChanged()
+    }
+
+    private fun currentWindowId(): Any? {
+        return hostView?.windowId ?: currentValueOf(LocalView).windowId
+    }
+
+    private fun updatePreDrawObserver() {
+        val view = if (isAttached) currentValueOf(LocalView) else null
+        if (hostView !== view) {
+            removePreDrawObserver()
+            hostView = view
+        }
+        if (view != null && !observingPreDraw) {
+            view.viewTreeObserver.addOnPreDrawListener(preDrawListener)
+            observingPreDraw = true
+        }
+    }
+
+    private fun removePreDrawObserver() {
+        if (!observingPreDraw) return
+        hostView?.viewTreeObserver?.takeIf { it.isAlive }?.removeOnPreDrawListener(preDrawListener)
+        observingPreDraw = false
     }
 }
 
@@ -453,11 +502,20 @@ private class AxBackdropBlurNode(
     private var settingsValues: AxBackdropBlurSettingsModel? = null
     private var settingsObserver: AxBackdropBlurSettingsSubscription? = null
     private var needsSourceInvalidation = false
+    private var hostView: View? = null
+    private var observingPreDraw = false
     private val sourceInvalidation: () -> Unit = {
         if (!needsSourceInvalidation) {
             needsSourceInvalidation = true
             invalidateDraw()
         }
+    }
+    private val preDrawListener = ViewTreeObserver.OnPreDrawListener {
+        if (isAttached) {
+            lastCoordinates?.let { updateCoordinates(it, state.resolvedPositionStrategy, true) }
+            invalidateDraw()
+        }
+        true
     }
 
     override val shouldAutoInvalidate = false
@@ -483,10 +541,12 @@ private class AxBackdropBlurNode(
             updateSettings(interactor)
             invalidateDraw()
         }.also { it.start() }
+        updatePreDrawObserver()
         updateAreas()
     }
 
     override fun onDetach() {
+        removePreDrawObserver()
         settingsObserver?.stop()
         settingsObserver = null
         settingsValues = null
@@ -500,6 +560,7 @@ private class AxBackdropBlurNode(
 
     override fun onObservedReadsChanged() {
         updateAreas()
+        updatePreDrawObserver()
     }
 
     override fun onPlaced(coordinates: LayoutCoordinates) {
@@ -659,6 +720,7 @@ private class AxBackdropBlurNode(
                 clearAreaListeners()
                 areas = nextAreas
                 areas.forEach { it.preDrawListeners += sourceInvalidation }
+                updatePreDrawObserver()
                 invalidateDraw()
             }
             val resolved = resolvePositionStrategy(
@@ -689,7 +751,7 @@ private class AxBackdropBlurNode(
         val newSize = newBounds?.size ?: Size.Unspecified
         val rootCoordinates = coordinates.findRootCoordinates()
         val newRootBounds = rootCoordinates.boundsForAxBlur(strategy) ?: Rect.Zero
-        val newWindowId = currentValueOf(LocalView).windowId
+        val newWindowId = currentWindowId()
         if (
             position != newPosition ||
             nodeSize != newSize ||
@@ -793,6 +855,28 @@ private class AxBackdropBlurNode(
     private fun clearAreaListeners() {
         areas.forEach { it.preDrawListeners -= sourceInvalidation }
         areas = emptyList()
+    }
+
+    private fun currentWindowId(): Any? {
+        return hostView?.windowId ?: currentValueOf(LocalView).windowId
+    }
+
+    private fun updatePreDrawObserver() {
+        val view = if (isAttached) currentValueOf(LocalView) else null
+        if (hostView !== view) {
+            removePreDrawObserver()
+            hostView = view
+        }
+        if (view != null && !observingPreDraw) {
+            view.viewTreeObserver.addOnPreDrawListener(preDrawListener)
+            observingPreDraw = true
+        }
+    }
+
+    private fun removePreDrawObserver() {
+        if (!observingPreDraw) return
+        hostView?.viewTreeObserver?.takeIf { it.isAlive }?.removeOnPreDrawListener(preDrawListener)
+        observingPreDraw = false
     }
 }
 
