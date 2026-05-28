@@ -48,7 +48,11 @@ class AxBlurBackgroundRenderer @JvmOverloads constructor(
     }
 
     fun onVisibilityAggregated(isVisible: Boolean) {
-        if (isVisible) view.invalidate()
+        if (isVisible) {
+            view.invalidate()
+        } else {
+            blur.clearCrossWindowBlur()
+        }
     }
 
     fun setEnabled(enabled: Boolean) {

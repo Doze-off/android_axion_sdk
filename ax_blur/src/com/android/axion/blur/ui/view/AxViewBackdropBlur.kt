@@ -798,7 +798,7 @@ class AxViewBackdropBlur @JvmOverloads constructor(
     private fun trackView(target: View) {
         if (!shouldTrackFrames()) return
         trackedStates.getOrPut(target) { ViewFrameState() }
-            .update(target, transformMatrix, targetRectF)
+            .update(target, transformMatrix, targetRectF, targetRect)
         updatePreDrawObserver()
     }
 
@@ -821,11 +821,29 @@ class AxViewBackdropBlur @JvmOverloads constructor(
                 clearKey(target)
                 iterator.remove()
                 changed = true
-            } else if (entry.value.update(target, transformMatrix, targetRectF)) {
-                if (target === view || target === sourceView) {
+            } else {
+                val stateChanged = entry.value.update(
+                    target,
+                    transformMatrix,
+                    targetRectF,
+                    targetRect,
+                )
+                if (!entry.value.isVisibleInWindow()) {
+                    val cleared = if (target === view) {
+                        val hadDrawables = drawables.isNotEmpty()
+                        clearCrossWindowBlur()
+                        hadDrawables
+                    } else {
+                        val hadDrawable = drawables.containsKey(target)
+                        clearKey(target)
+                        hadDrawable
+                    }
+                    changed = changed || cleared
+                }
+                if (stateChanged && (target === view || target === sourceView)) {
                     sourceBlurDirty = true
                 }
-                changed = true
+                changed = changed || stateChanged
             }
         }
         if (trackedStates.isEmpty()) {
@@ -1050,12 +1068,18 @@ class AxViewBackdropBlur @JvmOverloads constructor(
         private var top = Float.NaN
         private var right = Float.NaN
         private var bottom = Float.NaN
+        private var visibleInWindow = false
 
-        fun update(target: View, matrix: Matrix, rect: RectF): Boolean {
+        fun isVisibleInWindow(): Boolean {
+            return visibleInWindow
+        }
+
+        fun update(target: View, matrix: Matrix, rect: RectF, visibleRect: Rect): Boolean {
             rect.set(0f, 0f, target.width.toFloat(), target.height.toFloat())
             matrix.reset()
             target.transformMatrixToGlobal(matrix)
             matrix.mapRect(rect)
+            val targetVisibleInWindow = target.getGlobalVisibleRect(visibleRect)
             var treeAlpha = 1f
             var current: View? = target
             while (current != null) {
@@ -1073,7 +1097,8 @@ class AxViewBackdropBlur @JvmOverloads constructor(
                 left != rect.left ||
                 top != rect.top ||
                 right != rect.right ||
-                bottom != rect.bottom
+                bottom != rect.bottom ||
+                visibleInWindow != targetVisibleInWindow
             width = target.width
             height = target.height
             alpha = treeAlpha
@@ -1081,6 +1106,7 @@ class AxViewBackdropBlur @JvmOverloads constructor(
             top = rect.top
             right = rect.right
             bottom = rect.bottom
+            visibleInWindow = targetVisibleInWindow
             return changed
         }
     }
