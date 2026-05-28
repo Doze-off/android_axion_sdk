@@ -82,8 +82,8 @@ import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.toIntSize
 import androidx.compose.ui.unit.toSize
 import com.android.axion.blur.domain.interactor.AxBackdropBlurInteractor
-import com.android.axion.blur.shared.model.AxBackdropBlurSettingsModel
-import com.android.axion.blur.shared.model.AxBackdropBlurSettingsSubscription
+import com.android.axion.blur.model.AxBackdropBlurSettingsModel
+import com.android.axion.blur.model.AxBackdropBlurSettingsSubscription
 import com.android.axion.blur.ui.view.AxViewBackdropBlur
 import kotlin.math.roundToInt
 
@@ -249,6 +249,19 @@ internal class AxBackdropBlurArea {
     }
 }
 
+private data class AxBackdropBlurSourceGeometry(
+    val position: Offset = Offset.Unspecified,
+    val size: Size = Size.Unspecified,
+    val windowId: Any? = null,
+)
+
+private data class AxBackdropBlurNodeGeometry(
+    val position: Offset = Offset.Unspecified,
+    val size: Size = Size.Unspecified,
+    val rootBounds: Rect = Rect.Zero,
+    val windowId: Any? = null,
+)
+
 private fun resolvePositionStrategy(
     configured: AxBackdropBlurPositionStrategy,
     areas: List<AxBackdropBlurArea>,
@@ -307,9 +320,22 @@ private class AxBackdropBlurSourceNode(
     private var lastCoordinates: LayoutCoordinates? = null
     private var hostView: View? = null
     private var observingPreDraw = false
+    private var geometry = AxBackdropBlurSourceGeometry()
+    private var skipNextHostDirty = false
     private val preDrawListener = ViewTreeObserver.OnPreDrawListener {
         if (isAttached) {
+            val viewDirty = hostView?.isDirty == true
             lastCoordinates?.let { updateCoordinates(it, state.resolvedPositionStrategy) }
+            if (viewDirty) {
+                if (skipNextHostDirty) {
+                    skipNextHostDirty = false
+                } else {
+                    skipNextHostDirty = true
+                    invalidateDraw()
+                }
+            } else {
+                skipNextHostDirty = false
+            }
         }
         true
     }
@@ -339,6 +365,7 @@ private class AxBackdropBlurSourceNode(
 
     override fun onDetach() {
         removePreDrawObserver()
+        skipNextHostDirty = false
         area.reset()
         releaseLayer()
         state.removeArea(area)
@@ -357,7 +384,9 @@ private class AxBackdropBlurSourceNode(
 
     override fun onRemeasured(size: IntSize) {
         val newSize = size.toSize()
-        if (area.size != newSize) {
+        val nextGeometry = geometry.copy(size = newSize)
+        if (geometry != nextGeometry) {
+            geometry = nextGeometry
             area.size = newSize
             area.notifyChanged()
         }
@@ -397,6 +426,8 @@ private class AxBackdropBlurSourceNode(
     override fun onReset() {
         area.reset()
         removePreDrawObserver()
+        geometry = AxBackdropBlurSourceGeometry()
+        skipNextHostDirty = false
     }
 
     private fun updateCoordinates(coordinates: LayoutCoordinates) {
@@ -412,20 +443,16 @@ private class AxBackdropBlurSourceNode(
         val newPosition = newBounds?.topLeft ?: Offset.Unspecified
         val newSize = newBounds?.size ?: Size.Unspecified
         val newWindowId = currentWindowId()
-        var changed = false
-        if (area.position != newPosition) {
+        val nextGeometry = AxBackdropBlurSourceGeometry(
+            position = newPosition,
+            size = newSize,
+            windowId = newWindowId,
+        )
+        if (geometry != nextGeometry) {
+            geometry = nextGeometry
             area.position = newPosition
-            changed = true
-        }
-        if (area.size != newSize) {
             area.size = newSize
-            changed = true
-        }
-        if (area.windowId != newWindowId) {
             area.windowId = newWindowId
-            changed = true
-        }
-        if (changed) {
             area.notifyChanged()
         }
     }
@@ -445,6 +472,7 @@ private class AxBackdropBlurSourceNode(
         if (hostView !== view) {
             removePreDrawObserver()
             hostView = view
+            skipNextHostDirty = false
         }
         if (view != null && !observingPreDraw) {
             view.viewTreeObserver.addOnPreDrawListener(preDrawListener)
@@ -488,10 +516,7 @@ private class AxBackdropBlurNode(
     LayoutAwareModifierNode,
     ObserverModifierNode {
 
-    private var position = Offset.Unspecified
-    private var nodeSize = Size.Unspecified
-    private var rootBounds = Rect.Zero
-    private var windowId: Any? = null
+    private var geometry = AxBackdropBlurNodeGeometry()
     private var lastCoordinates: LayoutCoordinates? = null
     private var areas = emptyList<AxBackdropBlurArea>()
     private var layer: GraphicsLayer? = null
@@ -504,6 +529,7 @@ private class AxBackdropBlurNode(
     private var needsSourceInvalidation = false
     private var hostView: View? = null
     private var observingPreDraw = false
+    private var skipNextHostDirty = false
     private val sourceInvalidation: () -> Unit = {
         if (!needsSourceInvalidation) {
             needsSourceInvalidation = true
@@ -512,8 +538,18 @@ private class AxBackdropBlurNode(
     }
     private val preDrawListener = ViewTreeObserver.OnPreDrawListener {
         if (isAttached) {
+            val viewDirty = hostView?.isDirty == true
             lastCoordinates?.let { updateCoordinates(it, state.resolvedPositionStrategy, true) }
-            invalidateDraw()
+            if (viewDirty) {
+                if (skipNextHostDirty) {
+                    skipNextHostDirty = false
+                } else {
+                    skipNextHostDirty = true
+                    invalidateDraw()
+                }
+            } else {
+                skipNextHostDirty = false
+            }
         }
         true
     }
@@ -556,6 +592,13 @@ private class AxBackdropBlurNode(
         clearAreaListeners()
         layer?.let { requireGraphicsContext().releaseGraphicsLayer(it) }
         layer = null
+        geometry = AxBackdropBlurNodeGeometry()
+        skipNextHostDirty = false
+    }
+
+    override fun onReset() {
+        geometry = AxBackdropBlurNodeGeometry()
+        needsSourceInvalidation = false
     }
 
     override fun onObservedReadsChanged() {
@@ -569,8 +612,9 @@ private class AxBackdropBlurNode(
 
     override fun onRemeasured(size: IntSize) {
         val newSize = size.toSize()
-        if (nodeSize != newSize) {
-            nodeSize = newSize
+        val nextGeometry = geometry.copy(size = newSize)
+        if (geometry != nextGeometry) {
+            geometry = nextGeometry
             invalidateDraw()
         }
     }
@@ -608,12 +652,12 @@ private class AxBackdropBlurNode(
                 drawContent()
                 return
             }
-            val geometry = layerGeometry(blurRadius)
-            if (canDrawBackdrop(effect, geometry)) {
+            val blurLayerGeometry = layerGeometry(blurRadius)
+            if (canDrawBackdrop(effect, blurLayerGeometry)) {
                 val targetLayer = layer?.takeUnless { it.isReleased }
                     ?: requireGraphicsContext().createGraphicsLayer().also { layer = it }
-                targetLayer.record(geometry.size.toIntSize()) {
-                    translate(-geometry.bounds.left, -geometry.bounds.top) {
+                targetLayer.record(blurLayerGeometry.size.toIntSize()) {
+                    translate(-blurLayerGeometry.bounds.left, -blurLayerGeometry.bounds.top) {
                         areas.forEach { area ->
                             val areaPosition = Snapshot.withoutReadObservation {
                                 area.position.takeOrElse { Offset.Zero }
@@ -651,7 +695,7 @@ private class AxBackdropBlurNode(
                 }
                 targetLayer.renderEffect = effect
                 clipRect {
-                    translate(-geometry.offset.x, -geometry.offset.y) {
+                    translate(-blurLayerGeometry.offset.x, -blurLayerGeometry.offset.y) {
                         drawLayer(targetLayer)
                     }
                 }
@@ -726,7 +770,7 @@ private class AxBackdropBlurNode(
             val resolved = resolvePositionStrategy(
                 configured = state.positionStrategy,
                 areas = areas,
-                windowId = windowId,
+                windowId = geometry.windowId,
             )
             if (state.resolvedPositionStrategy != resolved) {
                 state.resolvedPositionStrategy = resolved
@@ -752,16 +796,14 @@ private class AxBackdropBlurNode(
         val rootCoordinates = coordinates.findRootCoordinates()
         val newRootBounds = rootCoordinates.boundsForAxBlur(strategy) ?: Rect.Zero
         val newWindowId = currentWindowId()
-        if (
-            position != newPosition ||
-            nodeSize != newSize ||
-            rootBounds != newRootBounds ||
-            windowId != newWindowId
-        ) {
-            position = newPosition
-            nodeSize = newSize
-            rootBounds = newRootBounds
-            windowId = newWindowId
+        val nextGeometry = AxBackdropBlurNodeGeometry(
+            position = newPosition,
+            size = newSize,
+            rootBounds = newRootBounds,
+            windowId = newWindowId,
+        )
+        if (geometry != nextGeometry) {
+            geometry = nextGeometry
             if (refreshAreas) updateAreas()
             invalidateDraw()
         }
@@ -769,25 +811,25 @@ private class AxBackdropBlurNode(
 
     private fun layerGeometry(blurRadius: Float): AxBackdropBlurLayerGeometry {
         if (
-            !position.isSpecified ||
-            !nodeSize.isSpecified ||
-            nodeSize.width <= 0f ||
-            nodeSize.height <= 0f
+            !geometry.position.isSpecified ||
+            !geometry.size.isSpecified ||
+            geometry.size.width <= 0f ||
+            geometry.size.height <= 0f
         ) {
             return AxBackdropBlurLayerGeometry(Rect.Zero, Offset.Zero)
         }
-        val nodeBounds = Rect(position, nodeSize)
+        val nodeBounds = Rect(geometry.position, geometry.size)
         val expandedBounds = if (blurRadius >= 1f) {
             nodeBounds.inflate(blurRadius)
         } else {
             nodeBounds
         }
         val bounds = expandedBounds.intersectOrEmpty(
-            if (rootBounds.isEmpty) expandedBounds else rootBounds,
+            if (geometry.rootBounds.isEmpty) expandedBounds else geometry.rootBounds,
         )
         return AxBackdropBlurLayerGeometry(
             bounds = bounds,
-            offset = position - bounds.topLeft,
+            offset = geometry.position - bounds.topLeft,
         )
     }
 
@@ -802,15 +844,12 @@ private class AxBackdropBlurNode(
 
     private fun canDrawBackdrop(
         effect: RenderEffect?,
-        geometry: AxBackdropBlurLayerGeometry,
+        blurLayerGeometry: AxBackdropBlurLayerGeometry,
     ): Boolean {
         return effect?.isSupported() == true &&
-            position.isSpecified &&
-            nodeSize.isSpecified &&
-            nodeSize.width > 0f &&
-            nodeSize.height > 0f &&
-            geometry.size.width > 0f &&
-            geometry.size.height > 0f &&
+            blurLayerGeometry.size.isSpecified &&
+            blurLayerGeometry.size.width > 0f &&
+            blurLayerGeometry.size.height > 0f &&
             hasDrawableArea()
     }
 
@@ -866,6 +905,7 @@ private class AxBackdropBlurNode(
         if (hostView !== view) {
             removePreDrawObserver()
             hostView = view
+            skipNextHostDirty = false
         }
         if (view != null && !observingPreDraw) {
             view.viewTreeObserver.addOnPreDrawListener(preDrawListener)

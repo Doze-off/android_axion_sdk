@@ -28,7 +28,7 @@ import android.view.ViewTreeObserver
 import android.view.Window
 import android.view.WindowManager
 import com.android.axion.blur.domain.interactor.AxBackdropBlurInteractor
-import com.android.axion.blur.shared.model.AxBackdropBlurSettingsModel
+import com.android.axion.blur.model.AxBackdropBlurSettingsModel
 import com.android.internal.graphics.drawable.BackgroundBlurDrawable
 import kotlin.math.roundToInt
 

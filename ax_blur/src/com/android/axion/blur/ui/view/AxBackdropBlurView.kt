@@ -99,6 +99,7 @@ class AxBackdropBlurRenderer @JvmOverloads constructor(
         setEnabled(true)
     }
     private val transformMatrix = Matrix()
+    private val sourceBounds = RectF()
     private var blurEffect: AndroidRenderEffect? = null
     private var blurEffectRadius = -1f
     private var observedSource: AxBackdropBlurSourceLayout? = null
@@ -108,6 +109,12 @@ class AxBackdropBlurRenderer @JvmOverloads constructor(
     private var useSettingsFallback = true
     private var enabled = true
     private var preferSourceBlur = false
+    private var requireSourceBlur = false
+    private var forceSourceBlurUpdate = false
+    private var sourceBlurUpdateSuppressed = false
+    private var sourceBlurRecorded = false
+    private var sourceBlurDirty = true
+    private var recordedSourceState = SourceRecord()
     private var storedBlurRadiusPx = 0f
     private var storedBackdropTintColor = AndroidColor.TRANSPARENT
     private var storedFallbackColor = AndroidColor.TRANSPARENT
@@ -115,7 +122,10 @@ class AxBackdropBlurRenderer @JvmOverloads constructor(
     private val settingsObserver = blurInteractor.createSubscription {
         applySystemBlurSettings()
     }
-    private val sourceRecordedListener = Runnable { view.postInvalidateOnAnimation() }
+    private val sourceRecordedListener = Runnable {
+        sourceBlurDirty = true
+        view.postInvalidateOnAnimation()
+    }
     private val preDrawListener = ViewTreeObserver.OnPreDrawListener {
         if (invalidateOnPreDraw) view.postInvalidateOnAnimation()
         true
@@ -158,6 +168,7 @@ class AxBackdropBlurRenderer @JvmOverloads constructor(
                 sourceView = null
                 resolveSource()
                 updateSourceObserver()
+                discardSourceBlur()
                 view.invalidate()
             }
         }
@@ -168,6 +179,7 @@ class AxBackdropBlurRenderer @JvmOverloads constructor(
                 removeSourceObserver()
                 field = value
                 updateSourceObserver()
+                discardSourceBlur()
                 view.invalidate()
             }
         }
@@ -199,7 +211,15 @@ class AxBackdropBlurRenderer @JvmOverloads constructor(
         removePreDrawObserver()
         removeSourceObserver()
         nativeBackdropBlur.onDetachedFromWindow()
-        blurNode.discardDisplayList()
+        discardSourceBlur()
+    }
+
+    fun onVisibilityAggregated(isVisible: Boolean) {
+        if (isVisible) {
+            view.invalidate()
+        } else {
+            clear()
+        }
     }
 
     fun draw(canvas: Canvas) {
@@ -215,12 +235,44 @@ class AxBackdropBlurRenderer @JvmOverloads constructor(
 
     fun clear() {
         nativeBackdropBlur.clear()
-        blurNode.discardDisplayList()
+        discardSourceBlur()
     }
 
     fun setPreferSourceBlur(prefer: Boolean) {
         if (preferSourceBlur == prefer) return
         preferSourceBlur = prefer
+        view.invalidate()
+    }
+
+    fun setRequireSourceBlur(require: Boolean) {
+        if (requireSourceBlur == require) return
+        requireSourceBlur = require
+        nativeBackdropBlur.setRequireSourceBlur(require)
+        view.invalidate()
+    }
+
+    fun setForceSourceBlurUpdate(force: Boolean) {
+        if (forceSourceBlurUpdate == force) return
+        forceSourceBlurUpdate = force
+        sourceBlurDirty = true
+        nativeBackdropBlur.setForceSourceBlurUpdate(force)
+        view.invalidate()
+    }
+
+    fun setSourceBlurUpdateSuppressed(suppressed: Boolean) {
+        if (sourceBlurUpdateSuppressed == suppressed) return
+        val wasSuppressed = sourceBlurUpdateSuppressed
+        sourceBlurUpdateSuppressed = suppressed
+        if (wasSuppressed && !suppressed) {
+            sourceBlurDirty = true
+        }
+        nativeBackdropBlur.setSourceBlurUpdateSuppressed(suppressed)
+        view.invalidate()
+    }
+
+    fun refreshSourceBlur() {
+        discardSourceBlur()
+        nativeBackdropBlur.refreshSourceBlur()
         view.invalidate()
     }
 
@@ -288,6 +340,7 @@ class AxBackdropBlurRenderer @JvmOverloads constructor(
         if (storedBlurRadiusPx != coerced) {
             storedBlurRadiusPx = coerced
             blurEffect = null
+            sourceBlurDirty = true
             view.invalidate()
         }
     }
@@ -318,9 +371,11 @@ class AxBackdropBlurRenderer @JvmOverloads constructor(
             val drewSource = drawSourceBlur(canvas)
             if (drewSource) return
             if (drewCrossWindow) {
-                drawColor(canvas, backdropTintColor)
-                return
+                nativeBackdropBlur.clearCrossWindowBlur()
             }
+            if (requireSourceBlur) return
+            drawColor(canvas, fallbackColor)
+            return
         }
 
         if (drawCrossWindowBlur(canvas)) {
@@ -335,13 +390,24 @@ class AxBackdropBlurRenderer @JvmOverloads constructor(
     private fun drawSourceBlur(canvas: Canvas): Boolean {
         if (!canDrawNativeBlur(canvas)) return false
         val source = resolveDrawSource() ?: return false
-        if (!recordSource(source)) return false
+        if (shouldRecordSource(source) && !recordSource(source)) return false
+        if (!sourceBlurRecorded) return false
         blurNode.setRenderEffect(resolveBlurEffect())
         withClip(canvas) {
             canvas.drawRenderNode(blurNode)
             drawColorUnclipped(canvas, backdropTintColor)
         }
         return true
+    }
+
+    private fun shouldRecordSource(source: View): Boolean {
+        val nextRecord = sourceRecordFor(source)
+        if (sourceBlurUpdateSuppressed && sourceBlurRecorded) return false
+        return forceSourceBlurUpdate ||
+            sourceBlurDirty ||
+            !sourceBlurRecorded ||
+            recordedSourceState != nextRecord ||
+            source.isDirty
     }
 
     private fun drawCrossWindowBlur(canvas: Canvas): Boolean {
@@ -376,6 +442,7 @@ class AxBackdropBlurRenderer @JvmOverloads constructor(
     }
 
     private fun recordSource(source: View): Boolean {
+        val nextRecord = sourceRecordFor(source)
         if (source === view || source.width <= 0 || source.height <= 0) return false
 
         blurNode.setPosition(0, 0, view.width, view.height)
@@ -388,7 +455,51 @@ class AxBackdropBlurRenderer @JvmOverloads constructor(
         val recorded = drawSource(recordingCanvas, source)
         recordingCanvas.restoreToCount(save)
         blurNode.endRecording()
+        sourceBlurRecorded = recorded
+        sourceBlurDirty = !recorded
+        recordedSourceState = nextRecord
+        if (!recorded) {
+            blurNode.discardDisplayList()
+        }
         return recorded
+    }
+
+    private fun sourceGeometry(source: View): SourceGeometry {
+        sourceBounds.set(0f, 0f, source.width.toFloat(), source.height.toFloat())
+        transformMatrix.reset()
+        source.transformMatrixToGlobal(transformMatrix)
+        view.transformMatrixToLocal(transformMatrix)
+        transformMatrix.mapRect(sourceBounds)
+        return SourceGeometry(
+            left = sourceBounds.left,
+            top = sourceBounds.top,
+            right = sourceBounds.right,
+            bottom = sourceBounds.bottom,
+        )
+    }
+
+    private fun sourceRecordFor(source: View): SourceRecord {
+        return SourceRecord(
+            viewWidth = view.width,
+            viewHeight = view.height,
+            sourceWidth = source.width,
+            sourceHeight = source.height,
+            sourceScrollX = source.scrollX,
+            sourceScrollY = source.scrollY,
+            sourceChildCount = sourceChildCount(source),
+            geometry = sourceGeometry(source),
+        )
+    }
+
+    private fun sourceChildCount(source: View): Int {
+        return if (source is ViewGroup) source.childCount else -1
+    }
+
+    private fun discardSourceBlur() {
+        blurNode.discardDisplayList()
+        sourceBlurRecorded = false
+        sourceBlurDirty = true
+        recordedSourceState = SourceRecord()
     }
 
     private fun drawSource(canvas: Canvas, source: View): Boolean {
@@ -552,6 +663,24 @@ class AxBackdropBlurRenderer @JvmOverloads constructor(
             observingPreDraw = false
         }
     }
+
+    private data class SourceRecord(
+        val viewWidth: Int = -1,
+        val viewHeight: Int = -1,
+        val sourceWidth: Int = -1,
+        val sourceHeight: Int = -1,
+        val sourceScrollX: Int = Int.MIN_VALUE,
+        val sourceScrollY: Int = Int.MIN_VALUE,
+        val sourceChildCount: Int = -1,
+        val geometry: SourceGeometry = SourceGeometry(),
+    )
+
+    private data class SourceGeometry(
+        val left: Float = Float.NaN,
+        val top: Float = Float.NaN,
+        val right: Float = Float.NaN,
+        val bottom: Float = Float.NaN,
+    )
 }
 
 open class AxBackdropBlurLayout @JvmOverloads constructor(
@@ -618,6 +747,11 @@ open class AxBackdropBlurLayout @JvmOverloads constructor(
         super.onDetachedFromWindow()
     }
 
+    override fun onVisibilityAggregated(isVisible: Boolean) {
+        super.onVisibilityAggregated(isVisible)
+        renderer.onVisibilityAggregated(isVisible)
+    }
+
     override fun onDraw(canvas: Canvas) {
         renderer.draw(canvas)
     }
@@ -628,6 +762,22 @@ open class AxBackdropBlurLayout @JvmOverloads constructor(
 
     fun setPreferSourceBlur(prefer: Boolean) {
         renderer.setPreferSourceBlur(prefer)
+    }
+
+    fun setRequireSourceBlur(require: Boolean) {
+        renderer.setRequireSourceBlur(require)
+    }
+
+    fun setForceSourceBlurUpdate(force: Boolean) {
+        renderer.setForceSourceBlurUpdate(force)
+    }
+
+    fun setSourceBlurUpdateSuppressed(suppressed: Boolean) {
+        renderer.setSourceBlurUpdateSuppressed(suppressed)
+    }
+
+    fun refreshSourceBlur() {
+        renderer.refreshSourceBlur()
     }
 }
 

@@ -20,8 +20,8 @@ import android.content.Context
 import android.os.Handler
 import android.os.Looper
 import com.android.axion.blur.domain.interactor.AxBackdropBlurInteractor
-import com.android.axion.blur.shared.model.AxBackdropBlurSettingsSpec
-import com.android.axion.blur.shared.model.AxBackdropBlurSettingsSubscription
+import com.android.axion.blur.model.AxBackdropBlurSettingsSpec
+import com.android.axion.blur.model.AxBackdropBlurSettingsSubscription
 
 class AxBlurSettings @JvmOverloads constructor(
     context: Context,

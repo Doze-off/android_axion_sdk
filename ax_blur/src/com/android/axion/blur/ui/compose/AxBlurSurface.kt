@@ -34,25 +34,35 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.layout.LayoutCoordinates
+import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.node.CompositionLocalConsumerModifierNode
 import androidx.compose.ui.node.DrawModifierNode
+import androidx.compose.ui.node.GlobalPositionAwareModifierNode
+import androidx.compose.ui.node.LayoutAwareModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.node.ObserverModifierNode
 import androidx.compose.ui.node.currentValueOf
 import androidx.compose.ui.node.invalidateDraw
+import androidx.compose.ui.node.observeReads
 import androidx.compose.ui.platform.InspectorInfo
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.colorResource
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.isSpecified
-import com.android.axion.blur.shared.model.AxBackdropBlurSettingsSpec
+import androidx.compose.ui.unit.toSize
+import com.android.axion.blur.model.AxBackdropBlurSettingsSpec
 import com.android.axion.blur.ui.view.AxViewBackdropBlur
 import com.android.axion.kotlin.settings.SettingsFlow
 import com.android.axion.kotlin.settings.SettingsType
@@ -247,13 +257,30 @@ private class AxBlurFrameTrackingNode(
     private var enabled: Boolean,
 ) : Modifier.Node(),
     CompositionLocalConsumerModifierNode,
-    DrawModifierNode {
+    DrawModifierNode,
+    GlobalPositionAwareModifierNode,
+    LayoutAwareModifierNode,
+    ObserverModifierNode {
 
+    private var lastCoordinates: LayoutCoordinates? = null
+    private var geometry = AxBlurFrameGeometry()
     private var hostView: View? = null
     private var observingPreDraw = false
+    private var skipNextHostDirty = false
     private val preDrawListener = ViewTreeObserver.OnPreDrawListener {
         if (isAttached && enabled) {
-            invalidateDraw()
+            val viewDirty = hostView?.isDirty == true
+            lastCoordinates?.let { updateCoordinates(it) }
+            if (viewDirty) {
+                if (skipNextHostDirty) {
+                    skipNextHostDirty = false
+                } else {
+                    skipNextHostDirty = true
+                    invalidateDraw()
+                }
+            } else {
+                skipNextHostDirty = false
+            }
         }
         true
     }
@@ -268,22 +295,78 @@ private class AxBlurFrameTrackingNode(
     }
 
     override fun onAttach() {
-        updatePreDrawObserver()
+        onObservedReadsChanged()
     }
 
     override fun onDetach() {
         removePreDrawObserver()
+        hostView = null
+        lastCoordinates = null
+        geometry = AxBlurFrameGeometry()
+        skipNextHostDirty = false
+    }
+
+    override fun onObservedReadsChanged() {
+        observeReads {
+            updatePreDrawObserver()
+            lastCoordinates?.let { updateCoordinates(it) }
+        }
+    }
+
+    override fun onPlaced(coordinates: LayoutCoordinates) {
+        updateCoordinates(coordinates)
+    }
+
+    override fun onRemeasured(size: IntSize) {
+        val newSize = size.toSize()
+        val nextGeometry = geometry.copy(size = newSize)
+        if (geometry != nextGeometry) {
+            geometry = nextGeometry
+            invalidateDraw()
+        }
+    }
+
+    override fun onGloballyPositioned(coordinates: LayoutCoordinates) {
+        updateCoordinates(coordinates)
     }
 
     override fun ContentDrawScope.draw() {
         drawContent()
     }
 
+    private fun updateCoordinates(coordinates: LayoutCoordinates) {
+        lastCoordinates = coordinates
+        val bounds = coordinates.boundsInRoot()
+        val newPosition = bounds.topLeft
+        val newSize = bounds.size
+        val newWindowId = currentWindowId()
+        val nextGeometry = AxBlurFrameGeometry(
+            position = newPosition,
+            size = newSize,
+            windowId = newWindowId,
+        )
+        if (geometry != nextGeometry) {
+            geometry = nextGeometry
+            invalidateDraw()
+        }
+    }
+
+    private fun currentWindowId(): Any? {
+        return hostView?.windowId ?: currentValueOf(LocalView).windowId
+    }
+
+    private data class AxBlurFrameGeometry(
+        val position: Offset = Offset.Unspecified,
+        val size: Size = Size.Unspecified,
+        val windowId: Any? = null,
+    )
+
     private fun updatePreDrawObserver() {
         val view = if (isAttached && enabled) currentValueOf(LocalView) else null
         if (hostView !== view) {
             removePreDrawObserver()
             hostView = view
+            skipNextHostDirty = false
         }
         if (view != null && !observingPreDraw) {
             view.viewTreeObserver.addOnPreDrawListener(preDrawListener)

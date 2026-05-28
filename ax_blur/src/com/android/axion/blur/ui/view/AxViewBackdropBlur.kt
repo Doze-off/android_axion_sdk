@@ -29,13 +29,14 @@ import android.graphics.Shader
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.os.Build
+import android.util.ArraySet
 import android.view.View
 import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import com.android.axion.blur.AxBlurSupport
 import com.android.axion.blur.domain.interactor.AxBackdropBlurInteractor
-import com.android.axion.blur.shared.model.AxBackdropBlurSettingsSpec
-import com.android.axion.blur.shared.model.AxBackdropBlurSettingsSubscription
+import com.android.axion.blur.model.AxBackdropBlurSettingsSpec
+import com.android.axion.blur.model.AxBackdropBlurSettingsSubscription
 import com.android.internal.graphics.drawable.BackgroundBlurDrawable
 import kotlin.math.max
 import kotlin.math.roundToInt
@@ -59,6 +60,8 @@ class AxViewBackdropBlur @JvmOverloads constructor(
     private val trackedStates = LinkedHashMap<View, ViewFrameState>()
     private val excludedSourceViews = ArrayList<View>()
     private val excludedSourceBranches = ArrayList<View>()
+    private val sourceContentViews = ArraySet<View>()
+    private var sourceDrawStopBranch: View? = null
     private var settingsInteractor = AxBackdropBlurInteractor(view.context)
     private var settingsSubscription: AxBackdropBlurSettingsSubscription? = null
     private var observingPreDraw = false
@@ -70,13 +73,13 @@ class AxViewBackdropBlur @JvmOverloads constructor(
     private var overlayColor = Color.TRANSPARENT
     private var sourceView: View? = null
     private var preferSourceBlur = false
+    private var requireSourceBlur = false
+    private var forceSourceBlurUpdate = false
+    private var sourceBlurUpdateSuppressed = false
     private var crossWindowBlurEnabled = true
     private var sourceBlurRecorded = false
     private var sourceBlurDirty = true
-    private var recordedViewWidth = -1
-    private var recordedViewHeight = -1
-    private var recordedSourceWidth = -1
-    private var recordedSourceHeight = -1
+    private var recordedSourceState = SourceRecord()
     private var sourceBlurEffect: RenderEffect? = null
     private var sourceBlurEffectRadius = -1f
     private val preDrawListener = ViewTreeObserver.OnPreDrawListener {
@@ -187,6 +190,29 @@ class AxViewBackdropBlur @JvmOverloads constructor(
     fun setPreferSourceBlur(prefer: Boolean) {
         if (preferSourceBlur == prefer) return
         preferSourceBlur = prefer
+        view.invalidate()
+    }
+
+    fun setRequireSourceBlur(require: Boolean) {
+        if (requireSourceBlur == require) return
+        requireSourceBlur = require
+        view.invalidate()
+    }
+
+    fun setForceSourceBlurUpdate(force: Boolean) {
+        if (forceSourceBlurUpdate == force) return
+        forceSourceBlurUpdate = force
+        sourceBlurDirty = true
+        view.invalidate()
+    }
+
+    fun setSourceBlurUpdateSuppressed(suppressed: Boolean) {
+        if (sourceBlurUpdateSuppressed == suppressed) return
+        val wasSuppressed = sourceBlurUpdateSuppressed
+        sourceBlurUpdateSuppressed = suppressed
+        if (wasSuppressed && !suppressed) {
+            sourceBlurDirty = true
+        }
         view.invalidate()
     }
 
@@ -455,9 +481,17 @@ class AxViewBackdropBlur @JvmOverloads constructor(
                 cornerRadius,
                 drawAlpha,
                 clipPath,
+                drawOverlay = !drewCrossWindow,
             )
             if (!drewCrossWindow) clearKey(key)
-            if (drewCrossWindow || drewSource) return true
+            if (!drewSource && requireSourceBlur) {
+                if (drewCrossWindow) clearKey(key)
+                return false
+            }
+            if (drewSource) return true
+            if (drewCrossWindow) {
+                return true
+            }
             return false
         }
         if (drawCrossWindowBlur(
@@ -500,6 +534,7 @@ class AxViewBackdropBlur @JvmOverloads constructor(
         alpha: Int,
         key: Any,
         clipPath: Path?,
+        color: Int = overlayColor,
     ): Boolean {
         if (!crossWindowBlurEnabled) return false
         if (!AxBlurSupport.supportsCrossWindowBlur()) return false
@@ -507,7 +542,7 @@ class AxViewBackdropBlur @JvmOverloads constructor(
         blurDrawable.setVisible(true, false)
         blurDrawable.setBlurRadius(blurRadiusPx.roundToInt())
         blurDrawable.alpha = alpha
-        blurDrawable.setColor(overlayColor)
+        blurDrawable.setColor(color)
         applyCornerRadius(blurDrawable, cornerRadii, cornerRadius)
         blurDrawable.setBounds(left, top, right, bottom)
         val save = canvas.save()
@@ -527,6 +562,7 @@ class AxViewBackdropBlur @JvmOverloads constructor(
         cornerRadius: Float,
         alpha: Int,
         clipPath: Path?,
+        drawOverlay: Boolean = true,
     ): Boolean {
         val source = sourceView ?: return false
         if (
@@ -553,22 +589,25 @@ class AxViewBackdropBlur @JvmOverloads constructor(
         }
         clip(canvas, left, top, right, bottom, cornerRadii, cornerRadius, clipPath)
         canvas.drawRenderNode(sourceBlurNode)
-        drawOverlay(canvas, left, top, right, bottom, cornerRadii, cornerRadius, clipPath)
+        if (drawOverlay) {
+            drawOverlay(canvas, left, top, right, bottom, cornerRadii, cornerRadius, clipPath)
+        }
         canvas.restoreToCount(save)
         return true
     }
 
     private fun shouldRecordSource(source: View): Boolean {
+        if (sourceBlurUpdateSuppressed && sourceBlurRecorded) return false
+        if (forceSourceBlurUpdate) return true
         return sourceBlurDirty ||
             !sourceBlurRecorded ||
-            recordedViewWidth != view.width ||
-            recordedViewHeight != view.height ||
-            recordedSourceWidth != source.width ||
-            recordedSourceHeight != source.height
+            recordedSourceState != sourceRecordFor(source)
     }
 
     private fun recordSource(source: View): Boolean {
+        val nextRecord = sourceRecordFor(source)
         trackView(source)
+        clearSourceContentViews()
         val outset = blurRadiusPx.roundToInt().coerceAtLeast(0)
         val nodeWidth = view.width + outset * 2
         val nodeHeight = view.height + outset * 2
@@ -581,19 +620,19 @@ class AxViewBackdropBlur @JvmOverloads constructor(
         val recorded = drawSource(recordingCanvas, source)
         recordingCanvas.restoreToCount(save)
         sourceBlurNode.endRecording()
-        sourceBlurDirty = false
-        sourceBlurRecorded = true
-        recordedViewWidth = view.width
-        recordedViewHeight = view.height
-        recordedSourceWidth = source.width
-        recordedSourceHeight = source.height
+        recordedSourceState = nextRecord
+        sourceBlurDirty = !recorded
+        sourceBlurRecorded = recorded
+        if (!recorded) {
+            sourceBlurNode.discardDisplayList()
+        }
         return recorded
     }
 
     private fun drawSource(canvas: Canvas, source: View): Boolean {
         if (source is ViewGroup) {
             collectExcludedSourceBranches(source)
-            if (excludedSourceBranches.isNotEmpty()) {
+            if (excludedSourceBranches.isNotEmpty() || sourceDrawStopBranch != null) {
                 drawViewGroupWithoutTargets(canvas, source, excludedSourceBranches)
                 return true
             }
@@ -604,22 +643,30 @@ class AxViewBackdropBlur @JvmOverloads constructor(
 
     private fun collectExcludedSourceBranches(group: ViewGroup) {
         excludedSourceBranches.clear()
-        addExcludedSourceBranch(group, view)
+        sourceDrawStopBranch = findSourceBranch(group, view)
+        if (sourceDrawStopBranch == null) {
+            addExcludedSourceBranch(group, view)
+        }
         excludedSourceViews.forEach { addExcludedSourceBranch(group, it) }
     }
 
     private fun addExcludedSourceBranch(group: ViewGroup, target: View) {
+        val branch = findSourceBranch(group, target) ?: return
+        if (!excludedSourceBranches.contains(branch)) {
+            excludedSourceBranches.add(branch)
+        }
+    }
+
+    private fun findSourceBranch(group: ViewGroup, target: View): View? {
         var current = target
         while (current.parent is View) {
             val parent = current.parent as View
             if (parent === group) {
-                if (!excludedSourceBranches.contains(current)) {
-                    excludedSourceBranches.add(current)
-                }
-                return
+                return current
             }
             current = parent
         }
+        return null
     }
 
     private fun drawViewGroupWithoutTargets(
@@ -628,12 +675,25 @@ class AxViewBackdropBlur @JvmOverloads constructor(
         targetBranches: List<View>,
     ) {
         drawViewBackground(canvas, group)
-        for (i in 0 until group.childCount) {
+        val save = canvas.save()
+        canvas.translate(-group.scrollX.toFloat(), -group.scrollY.toFloat())
+        if (group.clipToPadding) {
+            canvas.clipRect(
+                group.scrollX + group.paddingLeft,
+                group.scrollY + group.paddingTop,
+                group.scrollX + group.width - group.paddingRight,
+                group.scrollY + group.height - group.paddingBottom,
+            )
+        }
+        val stopIndex = sourceDrawStopBranch?.let { group.indexOfChild(it) } ?: group.childCount
+        val childCount = if (stopIndex >= 0) stopIndex else group.childCount
+        for (i in 0 until childCount) {
             val child = group.getChildAt(i)
             if (!targetBranches.contains(child)) {
-                drawChild(canvas, group, child)
+                drawChild(canvas, child)
             }
         }
+        canvas.restoreToCount(save)
     }
 
     private fun drawViewBackground(canvas: Canvas, source: View) {
@@ -644,11 +704,29 @@ class AxViewBackdropBlur @JvmOverloads constructor(
         canvas.restoreToCount(save)
     }
 
-    private fun drawChild(canvas: Canvas, parent: ViewGroup, child: View) {
+    private fun drawChild(canvas: Canvas, child: View) {
+        trackSourceContentView(child)
         val childAlpha = child.visualAlpha()
-        if (child.visibility != View.VISIBLE || childAlpha <= 0f) return
-        val left = (child.left - parent.scrollX).toFloat()
-        val top = (child.top - parent.scrollY).toFloat()
+        if ((child.visibility != View.VISIBLE && child.animation == null) || childAlpha <= 0f) return
+        if (drawChildRenderNode(canvas, child)) return
+        drawChildFallback(canvas, child, childAlpha)
+    }
+
+    private fun drawChildRenderNode(canvas: Canvas, child: View): Boolean {
+        if (!canvas.isHardwareAccelerated || !child.canHaveDisplayList()) return false
+        val renderNode = child.updateDisplayListIfDirty()
+        if (!renderNode.hasDisplayList()) return false
+        canvas.drawRenderNode(renderNode)
+        return true
+    }
+
+    private fun drawChildFallback(
+        canvas: Canvas,
+        child: View,
+        childAlpha: Float,
+    ) {
+        val left = child.left.toFloat()
+        val top = child.top.toFloat()
         val matrix = child.matrix
         val save = if (childAlpha < 1f) {
             childRect.set(0f, 0f, child.width.toFloat(), child.height.toFloat())
@@ -798,8 +876,13 @@ class AxViewBackdropBlur @JvmOverloads constructor(
     private fun trackView(target: View) {
         if (!shouldTrackFrames()) return
         trackedStates.getOrPut(target) { ViewFrameState() }
-            .update(target, transformMatrix, targetRectF, targetRect)
+            .update(target, transformMatrix, targetRectF, targetRect, false)
         updatePreDrawObserver()
+    }
+
+    private fun trackSourceContentView(target: View) {
+        sourceContentViews.add(target)
+        trackView(target)
     }
 
     private fun shouldTrackFrames(): Boolean {
@@ -815,18 +898,22 @@ class AxViewBackdropBlur @JvmOverloads constructor(
             val entry = iterator.next()
             val target = entry.key
             if (target !== view && !target.isAttachedToWindow) {
-                if (target === sourceView) {
+                if (target === sourceView || sourceContentViews.remove(target)) {
                     sourceBlurDirty = true
                 }
                 clearKey(target)
                 iterator.remove()
                 changed = true
             } else {
+                val sourceContentChanged = sourceContentViews.contains(target)
+                val affectsSource = target === view || target === sourceView || sourceContentChanged
+                val trackSourceDirty = target === sourceView || sourceContentChanged
                 val stateChanged = entry.value.update(
                     target,
                     transformMatrix,
                     targetRectF,
                     targetRect,
+                    trackSourceDirty,
                 )
                 if (!entry.value.isVisibleInWindow()) {
                     val cleared = if (target === view) {
@@ -840,7 +927,7 @@ class AxViewBackdropBlur @JvmOverloads constructor(
                     }
                     changed = changed || cleared
                 }
-                if (stateChanged && (target === view || target === sourceView)) {
+                if (stateChanged && affectsSource) {
                     sourceBlurDirty = true
                 }
                 changed = changed || stateChanged
@@ -936,9 +1023,13 @@ class AxViewBackdropBlur @JvmOverloads constructor(
         cornerRadii: FloatArray?,
         cornerRadius: Float,
         clipPath: Path?,
+        alpha: Int = 255,
     ) {
         if (Color.alpha(overlayColor) == 0) return
         overlayPaint.color = overlayColor
+        overlayPaint.alpha = (Color.alpha(overlayColor) * alpha / 255f)
+            .roundToInt()
+            .coerceIn(0, 255)
         if (clipPath != null) {
             canvas.drawPath(clipPath, overlayPaint)
             return
@@ -1016,9 +1107,17 @@ class AxViewBackdropBlur @JvmOverloads constructor(
         updatePreDrawObserver()
     }
 
+    fun refreshSourceBlur() {
+        discardSourceBlur()
+        view.invalidate()
+    }
+
     fun clear(target: View?) {
         if (target != null) {
             clearKey(target)
+            if (target === sourceView || sourceContentViews.remove(target)) {
+                discardSourceBlur()
+            }
             trackedStates.remove(target)
             updatePreDrawObserver()
         }
@@ -1033,13 +1132,25 @@ class AxViewBackdropBlur @JvmOverloads constructor(
     }
 
     private fun discardSourceBlur() {
+        clearSourceContentViews()
         sourceBlurNode.discardDisplayList()
         sourceBlurRecorded = false
         sourceBlurDirty = true
-        recordedViewWidth = -1
-        recordedViewHeight = -1
-        recordedSourceWidth = -1
-        recordedSourceHeight = -1
+        recordedSourceState = SourceRecord()
+    }
+
+    private fun sourceRecordFor(source: View): SourceRecord {
+        return SourceRecord(
+            viewWidth = view.width,
+            viewHeight = view.height,
+            sourceWidth = source.width,
+            sourceHeight = source.height,
+        )
+    }
+
+    private fun clearSourceContentViews() {
+        sourceContentViews.forEach { trackedStates.remove(it) }
+        sourceContentViews.clear()
     }
 
     private fun FloatArray.cornerRadiusAt(index: Int): Float {
@@ -1060,26 +1171,53 @@ class AxViewBackdropBlur @JvmOverloads constructor(
         val target: View?,
     )
 
+    private data class SourceRecord(
+        val viewWidth: Int = -1,
+        val viewHeight: Int = -1,
+        val sourceWidth: Int = -1,
+        val sourceHeight: Int = -1,
+    )
+
     private inner class ViewFrameState {
-        private var width = -1
-        private var height = -1
-        private var alpha = Float.NaN
-        private var left = Float.NaN
-        private var top = Float.NaN
-        private var right = Float.NaN
-        private var bottom = Float.NaN
-        private var visibleInWindow = false
+        private var transformState = ViewFrameTransformState()
+        private var visibilityState = ViewFrameVisibilityState()
+        private var clipState = ViewFrameClipState()
 
         fun isVisibleInWindow(): Boolean {
-            return visibleInWindow
+            return visibilityState.visibleInWindow
         }
 
-        fun update(target: View, matrix: Matrix, rect: RectF, visibleRect: Rect): Boolean {
+        fun update(
+            target: View,
+            matrix: Matrix,
+            rect: RectF,
+            visibleRect: Rect,
+            trackDirty: Boolean,
+        ): Boolean {
             rect.set(0f, 0f, target.width.toFloat(), target.height.toFloat())
             matrix.reset()
             target.transformMatrixToGlobal(matrix)
             matrix.mapRect(rect)
             val targetVisibleInWindow = target.getGlobalVisibleRect(visibleRect)
+            val targetScrollX = target.scrollX
+            val targetScrollY = target.scrollY
+            val targetChildCount = if (target is ViewGroup) target.childCount else -1
+            val targetDirty = trackDirty && target.isDirty
+            val targetVisibilityState = ViewFrameVisibilityState(
+                visibleInWindow = targetVisibleInWindow,
+                left = if (targetVisibleInWindow) visibleRect.left else Int.MIN_VALUE,
+                top = if (targetVisibleInWindow) visibleRect.top else Int.MIN_VALUE,
+                right = if (targetVisibleInWindow) visibleRect.right else Int.MIN_VALUE,
+                bottom = if (targetVisibleInWindow) visibleRect.bottom else Int.MIN_VALUE,
+            )
+            val targetClipSet = target.getClipBounds(visibleRect)
+            val targetClipState = ViewFrameClipState(
+                isSet = targetClipSet,
+                left = if (targetClipSet) visibleRect.left else Int.MIN_VALUE,
+                top = if (targetClipSet) visibleRect.top else Int.MIN_VALUE,
+                right = if (targetClipSet) visibleRect.right else Int.MIN_VALUE,
+                bottom = if (targetClipSet) visibleRect.bottom else Int.MIN_VALUE,
+            )
             var treeAlpha = 1f
             var current: View? = target
             while (current != null) {
@@ -1091,23 +1229,54 @@ class AxViewBackdropBlur @JvmOverloads constructor(
                 current = current.parent as? View
             }
             treeAlpha *= windowAlpha()
-            val changed = width != target.width ||
-                height != target.height ||
-                alpha != treeAlpha ||
-                left != rect.left ||
-                top != rect.top ||
-                right != rect.right ||
-                bottom != rect.bottom ||
-                visibleInWindow != targetVisibleInWindow
-            width = target.width
-            height = target.height
-            alpha = treeAlpha
-            left = rect.left
-            top = rect.top
-            right = rect.right
-            bottom = rect.bottom
-            visibleInWindow = targetVisibleInWindow
-            return changed
+            val targetTransformState = ViewFrameTransformState(
+                width = target.width,
+                height = target.height,
+                alpha = treeAlpha,
+                left = rect.left,
+                top = rect.top,
+                right = rect.right,
+                bottom = rect.bottom,
+                scrollX = targetScrollX,
+                scrollY = targetScrollY,
+                childCount = targetChildCount,
+            )
+            val changed = transformState != targetTransformState ||
+                visibilityState != targetVisibilityState ||
+                clipState != targetClipState
+            transformState = targetTransformState
+            visibilityState = targetVisibilityState
+            clipState = targetClipState
+            return changed || targetDirty
         }
     }
+
+    private data class ViewFrameVisibilityState(
+        val visibleInWindow: Boolean = false,
+        val left: Int = Int.MIN_VALUE,
+        val top: Int = Int.MIN_VALUE,
+        val right: Int = Int.MIN_VALUE,
+        val bottom: Int = Int.MIN_VALUE,
+    )
+
+    private data class ViewFrameClipState(
+        val isSet: Boolean = false,
+        val left: Int = Int.MIN_VALUE,
+        val top: Int = Int.MIN_VALUE,
+        val right: Int = Int.MIN_VALUE,
+        val bottom: Int = Int.MIN_VALUE,
+    )
+
+    private data class ViewFrameTransformState(
+        val width: Int = -1,
+        val height: Int = -1,
+        val alpha: Float = Float.NaN,
+        val left: Float = Float.NaN,
+        val top: Float = Float.NaN,
+        val right: Float = Float.NaN,
+        val bottom: Float = Float.NaN,
+        val scrollX: Int = Int.MIN_VALUE,
+        val scrollY: Int = Int.MIN_VALUE,
+        val childCount: Int = -1,
+    )
 }

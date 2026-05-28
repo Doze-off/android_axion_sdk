@@ -24,7 +24,7 @@ import android.graphics.drawable.ColorDrawable
 import android.graphics.drawable.Drawable
 import android.graphics.drawable.GradientDrawable
 import android.view.View
-import com.android.axion.blur.shared.model.AxBackdropBlurSettingsSpec
+import com.android.axion.blur.model.AxBackdropBlurSettingsSpec
 import com.android.axion.blur.ui.view.AxViewBackdropBlur
 import kotlin.math.min
 
@@ -51,7 +51,7 @@ class AxBlurBackgroundRenderer @JvmOverloads constructor(
         if (isVisible) {
             view.invalidate()
         } else {
-            blur.clearCrossWindowBlur()
+            blur.clear()
         }
     }
 
@@ -79,6 +79,18 @@ class AxBlurBackgroundRenderer @JvmOverloads constructor(
         blur.setPreferSourceBlur(prefer)
     }
 
+    fun setRequireSourceBlur(require: Boolean) {
+        blur.setRequireSourceBlur(require)
+    }
+
+    fun setForceSourceBlurUpdate(force: Boolean) {
+        blur.setForceSourceBlurUpdate(force)
+    }
+
+    fun setSourceBlurUpdateSuppressed(suppressed: Boolean) {
+        blur.setSourceBlurUpdateSuppressed(suppressed)
+    }
+
     fun setCrossWindowBlurEnabled(enabled: Boolean) {
         blur.setCrossWindowBlurEnabled(enabled)
     }
@@ -102,6 +114,10 @@ class AxBlurBackgroundRenderer @JvmOverloads constructor(
 
     fun clearCrossWindowBlur() {
         blur.clearCrossWindowBlur()
+    }
+
+    fun refreshSourceBlur() {
+        blur.refreshSourceBlur()
     }
 
     fun clear(target: View?) {
@@ -147,17 +163,24 @@ class AxBlurBackgroundRenderer @JvmOverloads constructor(
         if (current is GradientDrawable) {
             val cornerRadii = current.cornerRadii
             if (cornerRadii != null && cornerRadii.size >= 8) {
-                return blur.draw(canvas, 0, 0, view.width, view.height, cornerRadii)
+                return withOverlayColor(overlayColor) {
+                    blur.draw(canvas, 0, 0, view.width, view.height, cornerRadii)
+                }
             }
-            return blur.draw(canvas, 0, 0, view.width, view.height, cornerRadius(current))
+            return withOverlayColor(overlayColor) {
+                blur.draw(canvas, 0, 0, view.width, view.height, cornerRadius(current))
+            }
         }
-        return blur.draw(canvas, 0, 0, view.width, view.height, 0f)
+        return withOverlayColor(overlayColor) {
+            blur.draw(canvas, 0, 0, view.width, view.height, 0f)
+        }
     }
 
     @JvmOverloads
     fun draw(canvas: Canvas, target: View, overlayColor: Int, alpha: Int = surfaceAlpha): Boolean {
-        blur.setOverlayColor(overlayColor)
-        return blur.draw(canvas, target, alpha)
+        return withOverlayColor(overlayColor) {
+            blur.draw(canvas, target, alpha)
+        }
     }
 
     @JvmOverloads
@@ -171,8 +194,9 @@ class AxBlurBackgroundRenderer @JvmOverloads constructor(
         overlayColor: Int,
         alpha: Int = surfaceAlpha,
     ): Boolean {
-        blur.setOverlayColor(overlayColor)
-        return blur.draw(canvas, left, top, right, bottom, cornerRadius, alpha)
+        return withOverlayColor(overlayColor) {
+            blur.draw(canvas, left, top, right, bottom, cornerRadius, alpha)
+        }
     }
 
     fun draw(
@@ -186,8 +210,9 @@ class AxBlurBackgroundRenderer @JvmOverloads constructor(
         overlayColor: Int,
         alpha: Int,
     ): Boolean {
-        blur.setOverlayColor(overlayColor)
-        return blur.draw(canvas, key, left, top, right, bottom, cornerRadius, alpha)
+        return withOverlayColor(overlayColor) {
+            blur.draw(canvas, key, left, top, right, bottom, cornerRadius, alpha)
+        }
     }
 
     fun draw(
@@ -201,8 +226,9 @@ class AxBlurBackgroundRenderer @JvmOverloads constructor(
         overlayColor: Int,
         alpha: Int,
     ): Boolean {
-        blur.setOverlayColor(overlayColor)
-        return blur.draw(canvas, key, left, top, right, bottom, cornerRadii, alpha)
+        return withOverlayColor(overlayColor) {
+            blur.draw(canvas, key, left, top, right, bottom, cornerRadii, alpha)
+        }
     }
 
     @JvmOverloads
@@ -214,8 +240,17 @@ class AxBlurBackgroundRenderer @JvmOverloads constructor(
         overlayColor: Int,
         alpha: Int = surfaceAlpha,
     ): Boolean {
+        return withOverlayColor(overlayColor) {
+            blur.draw(canvas, bounds, clipPath, cornerRadius, alpha)
+        }
+    }
+
+    private inline fun <T> withOverlayColor(
+        overlayColor: Int,
+        block: () -> T,
+    ): T {
         blur.setOverlayColor(overlayColor)
-        return blur.draw(canvas, bounds, clipPath, cornerRadius, alpha)
+        return block()
     }
 
     private fun cornerRadius(background: GradientDrawable): Float {

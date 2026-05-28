@@ -13,34 +13,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.axion.blur.shared.model
+package com.android.axion.blur.model
 
-class AxBackdropBlurSettingsSpec internal constructor(
+data class AxBackdropBlurSettingsSpec internal constructor(
     internal val enabledKey: String?,
     internal val radiusKey: String,
     internal val defaultEnabled: Boolean,
     internal val defaultRadiusPx: Float?,
     internal val maxRadiusPx: Float?,
 ) {
-    override fun equals(other: Any?): Boolean {
-        if (this === other) return true
-        if (other !is AxBackdropBlurSettingsSpec) return false
-        return enabledKey == other.enabledKey &&
-            radiusKey == other.radiusKey &&
-            defaultEnabled == other.defaultEnabled &&
-            defaultRadiusPx == other.defaultRadiusPx &&
-            maxRadiusPx == other.maxRadiusPx
-    }
-
-    override fun hashCode(): Int {
-        var result = enabledKey?.hashCode() ?: 0
-        result = 31 * result + radiusKey.hashCode()
-        result = 31 * result + defaultEnabled.hashCode()
-        result = 31 * result + (defaultRadiusPx?.hashCode() ?: 0)
-        result = 31 * result + (maxRadiusPx?.hashCode() ?: 0)
-        return result
-    }
-
     companion object {
         private const val KEY_SYSTEM_BLUR_RADIUS = "system_blur_radius"
         private const val KEY_LAUNCHER_BLUR_ENABLED = "pulse_launcher_blur_enabled"
@@ -92,15 +73,4 @@ class AxBackdropBlurSettingsSpec internal constructor(
             )
         }
     }
-}
-
-internal data class AxBackdropBlurSettingsModel(
-    val enabled: Boolean,
-    val blurRadiusPx: Float,
-)
-
-internal interface AxBackdropBlurSettingsSubscription {
-    fun start()
-
-    fun stop()
 }
