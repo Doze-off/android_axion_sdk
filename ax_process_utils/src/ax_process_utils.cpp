@@ -92,7 +92,7 @@ static void initialize_cpuset() {
     if (CPU_COUNT(&g_big_cpu_set) < 2) {
         g_big_cpu_set = g_all_cpu_set;
     }
-    if (CPU_COUNT(&g_prime_cpu_set) < 2) {
+    if (CPU_COUNT(&g_prime_cpu_set) == 0) {
         g_prime_cpu_set = g_big_cpu_set;
     }
 
