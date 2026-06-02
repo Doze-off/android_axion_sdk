@@ -57,6 +57,7 @@ class AxViewBackdropBlur @JvmOverloads constructor(
     private val defaultKey = Any()
     private val drawables = LinkedHashMap<Any, BackgroundBlurDrawable>()
     private val drawableAlphaStates = LinkedHashMap<Any, DrawableAlphaState>()
+    private val resolvedDrawableAlphas = LinkedHashMap<Any, Int>()
     private val trackedStates = LinkedHashMap<View, ViewFrameState>()
     private val excludedSourceViews = ArrayList<View>()
     private val excludedSourceBranches = ArrayList<View>()
@@ -65,6 +66,7 @@ class AxViewBackdropBlur @JvmOverloads constructor(
     private var settingsInteractor = AxBackdropBlurInteractor(view.context)
     private var settingsSubscription: AxBackdropBlurSettingsSubscription? = null
     private var observingPreDraw = false
+    private var observingDraw = false
     private var attached = false
     private var enabled = false
     private var useSettingsBlurRadius = true
@@ -83,10 +85,19 @@ class AxViewBackdropBlur @JvmOverloads constructor(
     private var sourceBlurEffect: RenderEffect? = null
     private var sourceBlurEffectRadius = -1f
     private val preDrawListener = ViewTreeObserver.OnPreDrawListener {
-        if (enabled && hasTrackedStateChanged()) {
-            view.postInvalidateOnAnimation()
+        if (enabled) {
+            val stateChanged = hasTrackedStateChanged()
+            val alphaChanged = updateDrawableAlphas()
+            if (stateChanged || alphaChanged) {
+                invalidateHost()
+            }
         }
         true
+    }
+    private val drawListener = ViewTreeObserver.OnDrawListener {
+        if (enabled) {
+            updateDrawableAlphas()
+        }
     }
 
     init {
@@ -112,7 +123,7 @@ class AxViewBackdropBlur @JvmOverloads constructor(
             updatePreDrawObserver()
         }
         updateSettingsObserver()
-        view.invalidate()
+        invalidateHost()
     }
 
     fun setAlpha(alpha: Int) {
@@ -126,7 +137,7 @@ class AxViewBackdropBlur @JvmOverloads constructor(
             }
         }
         updateDrawableAlphas()
-        view.invalidate()
+        invalidateHost()
     }
 
     fun setSurfaceAlpha(alpha: Int) {
@@ -136,7 +147,7 @@ class AxViewBackdropBlur @JvmOverloads constructor(
     fun setOverlayColor(color: Int) {
         if (overlayColor == color) return
         overlayColor = color
-        view.invalidate()
+        invalidateHost()
     }
 
     fun setBlurRadiusPx(radius: Float) {
@@ -157,7 +168,7 @@ class AxViewBackdropBlur @JvmOverloads constructor(
         }
         discardSourceBlur()
         updatePreDrawObserver()
-        view.invalidate()
+        invalidateHost()
     }
 
     fun setExcludedSourceViews(vararg excludedViews: View?) {
@@ -184,26 +195,26 @@ class AxViewBackdropBlur @JvmOverloads constructor(
         }
         discardSourceBlur()
         updatePreDrawObserver()
-        view.invalidate()
+        invalidateHost()
     }
 
     fun setPreferSourceBlur(prefer: Boolean) {
         if (preferSourceBlur == prefer) return
         preferSourceBlur = prefer
-        view.invalidate()
+        invalidateHost()
     }
 
     fun setRequireSourceBlur(require: Boolean) {
         if (requireSourceBlur == require) return
         requireSourceBlur = require
-        view.invalidate()
+        invalidateHost()
     }
 
     fun setForceSourceBlurUpdate(force: Boolean) {
         if (forceSourceBlurUpdate == force) return
         forceSourceBlurUpdate = force
         sourceBlurDirty = true
-        view.invalidate()
+        invalidateHost()
     }
 
     fun setSourceBlurUpdateSuppressed(suppressed: Boolean) {
@@ -213,7 +224,7 @@ class AxViewBackdropBlur @JvmOverloads constructor(
         if (wasSuppressed && !suppressed) {
             sourceBlurDirty = true
         }
-        view.invalidate()
+        invalidateHost()
     }
 
     fun setCrossWindowBlurEnabled(enabled: Boolean) {
@@ -222,7 +233,7 @@ class AxViewBackdropBlur @JvmOverloads constructor(
         if (!enabled) {
             clearCrossWindowBlur()
         }
-        view.invalidate()
+        invalidateHost()
     }
 
     fun useSystemBlurRadius() {
@@ -249,6 +260,14 @@ class AxViewBackdropBlur @JvmOverloads constructor(
         sourceView = null
         excludedSourceViews.clear()
         clear()
+    }
+
+    fun onVisibilityAggregated(isVisible: Boolean) {
+        if (!isVisible) {
+            clear()
+            return
+        }
+        invalidateHost()
     }
 
     fun verifyDrawable(who: Drawable): Boolean {
@@ -438,25 +457,13 @@ class AxViewBackdropBlur @JvmOverloads constructor(
         )
         drawableAlphaStates[key] = alphaState
         val drawAlpha = resolvedDrawableAlpha(alphaState)
+        if (drawAlpha <= 0) {
+            clearKey(key)
+            return true
+        }
         if (!canDrawGeometry(canvas, left, top, right, bottom)) {
             clearKey(key)
             return false
-        }
-        if (drawAlpha <= 0) {
-            val drewCrossWindow = drawCrossWindowBlur(
-                canvas,
-                left,
-                top,
-                right,
-                bottom,
-                cornerRadii,
-                cornerRadius,
-                0,
-                key,
-                clipPath,
-            )
-            if (!drewCrossWindow) clearKey(key)
-            return drewCrossWindow
         }
         if (preferSourceBlur) {
             val drewCrossWindow = drawCrossWindowBlur(
@@ -542,6 +549,7 @@ class AxViewBackdropBlur @JvmOverloads constructor(
         blurDrawable.setVisible(true, false)
         blurDrawable.setBlurRadius(blurRadiusPx.roundToInt())
         blurDrawable.alpha = alpha
+        resolvedDrawableAlphas[key] = alpha
         blurDrawable.setColor(color)
         applyCornerRadius(blurDrawable, cornerRadii, cornerRadius)
         blurDrawable.setBounds(left, top, right, bottom)
@@ -815,6 +823,7 @@ class AxViewBackdropBlur @JvmOverloads constructor(
     }
 
     private fun viewTreeAlpha(alpha: Int): Int {
+        if (!view.getGlobalVisibleRect(targetRect)) return 0
         var drawAlpha = alpha.coerceIn(0, 255)
         var current: View? = view
         while (current != null) {
@@ -835,14 +844,39 @@ class AxViewBackdropBlur @JvmOverloads constructor(
         return if (state.applyViewAlpha) viewTreeAlpha(drawAlpha) else drawAlpha
     }
 
-    private fun updateDrawableAlphas() {
-        drawables.forEach { (key, drawable) ->
-            val state = drawableAlphaStates[key] ?: return@forEach
-            drawable.alpha = resolvedDrawableAlpha(state)
+    private fun updateDrawableAlphas(): Boolean {
+        var changed = false
+        val iterator = drawables.entries.iterator()
+        while (iterator.hasNext()) {
+            val entry = iterator.next()
+            val state = drawableAlphaStates[entry.key]
+            if (state == null) {
+                deactivateCrossWindowBlurDrawable(entry.value)
+                resolvedDrawableAlphas.remove(entry.key)
+                iterator.remove()
+                changed = true
+                continue
+            }
+            val alpha = resolvedDrawableAlpha(state)
+            if (alpha <= 0) {
+                deactivateCrossWindowBlurDrawable(entry.value)
+                drawableAlphaStates.remove(entry.key)
+                resolvedDrawableAlphas.remove(entry.key)
+                iterator.remove()
+                changed = true
+                continue
+            }
+            if (resolvedDrawableAlphas[entry.key] != alpha) {
+                entry.value.alpha = alpha
+                resolvedDrawableAlphas[entry.key] = alpha
+                changed = true
+            }
         }
+        return changed
     }
 
     private fun targetLocalAlpha(target: View): Float {
+        if (!target.getGlobalVisibleRect(targetRect)) return 0f
         var alpha = 1f
         var current: View? = target
         while (current != null) {
@@ -915,18 +949,6 @@ class AxViewBackdropBlur @JvmOverloads constructor(
                     targetRect,
                     trackSourceDirty,
                 )
-                if (!entry.value.isVisibleInWindow()) {
-                    val cleared = if (target === view) {
-                        val hadDrawables = drawables.isNotEmpty()
-                        clearCrossWindowBlur()
-                        hadDrawables
-                    } else {
-                        val hadDrawable = drawables.containsKey(target)
-                        clearKey(target)
-                        hadDrawable
-                    }
-                    changed = changed || cleared
-                }
                 if (stateChanged && affectsSource) {
                     sourceBlurDirty = true
                 }
@@ -936,17 +958,16 @@ class AxViewBackdropBlur @JvmOverloads constructor(
         if (trackedStates.isEmpty()) {
             removePreDrawObserver()
         }
-        if (changed) {
-            updateDrawableAlphas()
-        }
         return changed
     }
 
     private fun updatePreDrawObserver() {
         if (attached && enabled && trackedStates.isNotEmpty()) {
             addPreDrawObserver()
+            addDrawObserver()
         } else {
             removePreDrawObserver()
+            removeDrawObserver()
         }
     }
 
@@ -963,6 +984,22 @@ class AxViewBackdropBlur @JvmOverloads constructor(
                 view.viewTreeObserver.removeOnPreDrawListener(preDrawListener)
             }
             observingPreDraw = false
+        }
+    }
+
+    private fun addDrawObserver() {
+        if (!observingDraw) {
+            view.viewTreeObserver.addOnDrawListener(drawListener)
+            observingDraw = true
+        }
+    }
+
+    private fun removeDrawObserver() {
+        if (observingDraw) {
+            if (view.viewTreeObserver.isAlive) {
+                view.viewTreeObserver.removeOnDrawListener(drawListener)
+            }
+            observingDraw = false
         }
     }
 
@@ -1059,8 +1096,11 @@ class AxViewBackdropBlur @JvmOverloads constructor(
         blurRadiusPx = coerced
         sourceBlurEffect = null
         discardSourceBlur()
-        if (coerced == 0f) clear()
-        view.invalidate()
+        if (coerced == 0f) {
+            clear()
+            return
+        }
+        invalidateHost()
     }
 
     private fun updateSettingsObserver() {
@@ -1098,18 +1138,17 @@ class AxViewBackdropBlur @JvmOverloads constructor(
     }
 
     fun clearCrossWindowBlur() {
-        drawables.values.forEach {
-            it.setVisible(false, false)
-            it.setBlurRadius(0)
-        }
+        drawables.values.forEach(::deactivateCrossWindowBlurDrawable)
         drawables.clear()
         drawableAlphaStates.clear()
+        resolvedDrawableAlphas.clear()
         updatePreDrawObserver()
+        invalidateHost()
     }
 
     fun refreshSourceBlur() {
         discardSourceBlur()
-        view.invalidate()
+        invalidateHost()
     }
 
     fun clear(target: View?) {
@@ -1120,15 +1159,30 @@ class AxViewBackdropBlur @JvmOverloads constructor(
             }
             trackedStates.remove(target)
             updatePreDrawObserver()
+            invalidateHost()
+        }
+    }
+
+    private fun invalidateHost() {
+        view.postInvalidateOnAnimation()
+        val root = view.rootView
+        if (root !== view) {
+            root.postInvalidateOnAnimation()
         }
     }
 
     private fun clearKey(key: Any) {
         drawableAlphaStates.remove(key)
-        drawables.remove(key)?.let {
-            it.setVisible(false, false)
-            it.setBlurRadius(0)
-        }
+        resolvedDrawableAlphas.remove(key)
+        drawables.remove(key)?.let(::deactivateCrossWindowBlurDrawable)
+    }
+
+    private fun deactivateCrossWindowBlurDrawable(drawable: BackgroundBlurDrawable) {
+        drawable.alpha = 0
+        drawable.setColor(Color.TRANSPARENT)
+        drawable.setBounds(0, 0, 0, 0)
+        drawable.setVisible(false, false)
+        drawable.setBlurRadius(0)
     }
 
     private fun discardSourceBlur() {
@@ -1182,10 +1236,6 @@ class AxViewBackdropBlur @JvmOverloads constructor(
         private var transformState = ViewFrameTransformState()
         private var visibilityState = ViewFrameVisibilityState()
         private var clipState = ViewFrameClipState()
-
-        fun isVisibleInWindow(): Boolean {
-            return visibilityState.visibleInWindow
-        }
 
         fun update(
             target: View,

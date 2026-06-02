@@ -48,11 +48,7 @@ class AxBlurBackgroundRenderer @JvmOverloads constructor(
     }
 
     fun onVisibilityAggregated(isVisible: Boolean) {
-        if (isVisible) {
-            view.invalidate()
-        } else {
-            blur.clear()
-        }
+        blur.onVisibilityAggregated(isVisible)
     }
 
     fun setEnabled(enabled: Boolean) {
