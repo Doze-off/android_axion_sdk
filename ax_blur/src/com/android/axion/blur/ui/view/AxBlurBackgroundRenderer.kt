@@ -121,7 +121,8 @@ class AxBlurBackgroundRenderer @JvmOverloads constructor(
     }
 
     fun createBackgroundDrawable(background: GradientDrawable, overlayColor: Int): GradientDrawable {
-        return BlurGradientDrawable(this, background, overlayColor)
+        return if (!isCrossWindowBlurActive()) background
+            else BlurGradientDrawable(this, background, overlayColor)
     }
 
     @JvmOverloads
@@ -130,6 +131,7 @@ class AxBlurBackgroundRenderer @JvmOverloads constructor(
         background: Drawable?,
         fallbackColor: Int = Color.TRANSPARENT,
     ): Boolean {
+        if (!isCrossWindowBlurActive()) return false
         val current = background?.current
         return drawResolvedBackground(
             canvas,
@@ -143,6 +145,7 @@ class AxBlurBackgroundRenderer @JvmOverloads constructor(
         background: Drawable?,
         overlayColor: Int,
     ): Boolean {
+        if (!isCrossWindowBlurActive()) return false
         return drawResolvedBackground(canvas, background, overlayColor)
     }
 
@@ -174,6 +177,7 @@ class AxBlurBackgroundRenderer @JvmOverloads constructor(
 
     @JvmOverloads
     fun draw(canvas: Canvas, target: View, overlayColor: Int, alpha: Int = surfaceAlpha): Boolean {
+        if (!isCrossWindowBlurActive()) return false
         return withOverlayColor(overlayColor) {
             blur.draw(canvas, target, alpha)
         }
@@ -190,6 +194,7 @@ class AxBlurBackgroundRenderer @JvmOverloads constructor(
         overlayColor: Int,
         alpha: Int = surfaceAlpha,
     ): Boolean {
+        if (!isCrossWindowBlurActive()) return false
         return withOverlayColor(overlayColor) {
             blur.draw(canvas, left, top, right, bottom, cornerRadius, alpha)
         }
@@ -206,6 +211,7 @@ class AxBlurBackgroundRenderer @JvmOverloads constructor(
         overlayColor: Int,
         alpha: Int,
     ): Boolean {
+        if (!isCrossWindowBlurActive()) return false
         return withOverlayColor(overlayColor) {
             blur.draw(canvas, key, left, top, right, bottom, cornerRadius, alpha)
         }
@@ -222,6 +228,7 @@ class AxBlurBackgroundRenderer @JvmOverloads constructor(
         overlayColor: Int,
         alpha: Int,
     ): Boolean {
+        if (!isCrossWindowBlurActive()) return false
         return withOverlayColor(overlayColor) {
             blur.draw(canvas, key, left, top, right, bottom, cornerRadii, alpha)
         }
@@ -236,6 +243,7 @@ class AxBlurBackgroundRenderer @JvmOverloads constructor(
         overlayColor: Int,
         alpha: Int = surfaceAlpha,
     ): Boolean {
+        if (!isCrossWindowBlurActive()) return false
         return withOverlayColor(overlayColor) {
             blur.draw(canvas, bounds, clipPath, cornerRadius, alpha)
         }

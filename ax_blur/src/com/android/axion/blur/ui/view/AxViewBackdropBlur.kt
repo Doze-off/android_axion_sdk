@@ -69,6 +69,7 @@ class AxViewBackdropBlur @JvmOverloads constructor(
     private var observingDraw = false
     private var attached = false
     private var enabled = false
+    private var globalBlurEnabled = true
     private var useSettingsBlurRadius = true
     private var blurRadiusPx = 0f
     private var alpha = 255
@@ -109,7 +110,7 @@ class AxViewBackdropBlur @JvmOverloads constructor(
     }
 
     fun isCrossWindowBlurActive(): Boolean {
-        return crossWindowBlurEnabled &&
+        return globalBlurEnabled && crossWindowBlurEnabled &&
             shouldTrackFrames() &&
             AxBlurSupport.supportsCrossWindowBlur()
     }
@@ -123,6 +124,9 @@ class AxViewBackdropBlur @JvmOverloads constructor(
             updatePreDrawObserver()
         }
         updateSettingsObserver()
+        if (enabled) {
+            applyBlurSettings()
+        }
         invalidateHost()
     }
 
@@ -1086,6 +1090,7 @@ class AxViewBackdropBlur @JvmOverloads constructor(
 
     private fun applyBlurSettings() {
         if (useSettingsBlurRadius) {
+            globalBlurEnabled = settingsInteractor.settings().enabled
             updateBlurRadiusPx(settingsInteractor.settings().blurRadiusPx)
         }
     }
