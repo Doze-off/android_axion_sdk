@@ -156,7 +156,7 @@ object DeviceInfoProvider {
     }
 
     fun getProcessor(): String {
-        val processorInfo = SystemProperties.get("persist.sys.axion_processor_info", "")
+        val processorInfo = SystemProperties.get("persist.sys.axion_cpu_info", "")
         if (processorInfo.isNotEmpty()) {
             return processorInfo.replace("_", " ")
         }
