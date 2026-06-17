@@ -81,6 +81,7 @@ fun SliderPreference(
     val shape = preferenceShape(position)
     val haptic = LocalHapticFeedback.current
     val contentAlpha = if (enabled) 1f else 0.38f
+    val hasSummary = summary.isNotEmpty()
 
     Column(
         modifier = modifier
@@ -91,9 +92,14 @@ fun SliderPreference(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 72.dp)
+                .heightIn(min = if (hasSummary) 72.dp else 60.dp)
                 .alpha(contentAlpha)
-                .padding(start = 16.dp, end = 16.dp, top = 12.dp),
+                .padding(
+                    start = 16.dp,
+                    end = 16.dp,
+                    top = 12.dp,
+                    bottom = if (hasSummary) 0.dp else 4.dp,
+                ),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Spacer(modifier = Modifier.width(16.dp))
@@ -102,13 +108,15 @@ fun SliderPreference(
                     text = title,
                     style = MaterialTheme.typography.titleMedium,
                     color = MaterialTheme.colorScheme.onSurface,
-                    modifier = Modifier.padding(vertical = 2.dp)
+                    modifier = if (hasSummary) Modifier.padding(vertical = 2.dp) else Modifier
                 )
-                Text(
-                    text = summary,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                if (hasSummary) {
+                    Text(
+                        text = summary,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
 
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -169,7 +177,7 @@ fun SliderPreference(
             )
         )
 
-        Spacer(modifier = Modifier.height(8.dp))
+        Spacer(modifier = Modifier.height(if (hasSummary) 8.dp else 0.dp))
     }
 }
 

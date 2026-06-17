@@ -1,0 +1,33 @@
+package {
+    default_visibility: ["//visibility:public"],
+}
+
+android_library {
+    name: "ax_preferences",
+    manifest: "AndroidManifest.xml",
+
+    srcs: [
+        "src/**/*.kt",
+    ],
+
+    resource_dirs: ["res"],
+
+    static_libs: [
+        "ax_compose",
+        "androidx.compose.runtime_runtime",
+        "androidx.compose.ui_ui",
+        "androidx.preference_preference",
+        "SettingsLibSettingsTheme",
+        "kotlin-stdlib",
+    ],
+
+    libs: [
+        "framework",
+    ],
+
+    kotlincflags: [
+        "-Xjvm-default=all",
+        "-P plugin:androidx.compose.compiler.plugins.kotlin:sourceInformation=true",
+    ],
+    use_resource_processor: true,
+}
