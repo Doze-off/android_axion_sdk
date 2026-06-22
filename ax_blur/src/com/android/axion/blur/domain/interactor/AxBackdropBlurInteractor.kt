@@ -41,7 +41,20 @@ internal class AxBackdropBlurInteractor(
                 blurRadiusPx = 0f,
             )
         }
-        val radius = repository.secureFloat(spec.radiusKey, defaultRadius)
+        val defaultStoredRadius = if (spec.radiusInPercent) {
+            defaultRadius * FULL_BLUR_PERCENT / maxRadius
+        } else {
+            defaultRadius
+        }
+        val storedRadius = repository.secureFloat(
+            spec.radiusKey,
+            defaultStoredRadius,
+        )
+        val radius = if (spec.radiusInPercent) {
+            maxRadius * storedRadius / FULL_BLUR_PERCENT
+        } else {
+            storedRadius
+        }
         return AxBackdropBlurSettingsModel(
             enabled = true,
             blurRadiusPx = radius.sanitize(maxRadius),
@@ -65,6 +78,8 @@ internal class AxBackdropBlurInteractor(
     }
 
     companion object {
+        private const val FULL_BLUR_PERCENT = 100f
+
         fun maxBlurRadiusPx(context: Context): Float {
             return AxBackdropBlurSettingsRepository.maxBlurRadiusPx(context)
         }

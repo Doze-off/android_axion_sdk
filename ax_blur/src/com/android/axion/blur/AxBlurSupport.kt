@@ -20,12 +20,13 @@ import android.app.ActivityManager
 import android.view.CrossWindowBlurListeners
 
 internal object AxBlurSupport {
+    private val crossWindowBlurCapable =
+        CrossWindowBlurListeners.CROSS_WINDOW_BLUR_SUPPORTED &&
+            ActivityManager.isHighEndGfx() &&
+            !AxBlurProperties.disableBlur
+
     fun supportsCrossWindowBlur(): Boolean {
-        if (
-            !CrossWindowBlurListeners.CROSS_WINDOW_BLUR_SUPPORTED ||
-            !ActivityManager.isHighEndGfx() ||
-            AxBlurProperties.disableBlur
-        ) {
+        if (!crossWindowBlurCapable) {
             return false
         }
         return try {

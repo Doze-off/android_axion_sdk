@@ -21,19 +21,21 @@ data class AxBackdropBlurSettingsSpec internal constructor(
     internal val defaultEnabled: Boolean,
     internal val defaultRadiusPx: Float?,
     internal val maxRadiusPx: Float?,
+    internal val radiusInPercent: Boolean,
 ) {
     companion object {
-        private const val KEY_SYSTEM_BLUR_RADIUS = "system_blur_radius"
+        private const val KEY_SYSTEM_BLUR_RADIUS_PCT = "system_blur_radius_pct"
         private const val KEY_LAUNCHER_BLUR_ENABLED = "pulse_launcher_blur_enabled"
-        private const val KEY_LAUNCHER_BLUR_RADIUS = "pulse_launcher_blur_radius"
+        private const val KEY_LAUNCHER_BLUR_RADIUS_PCT = "pulse_launcher_blur_radius_pct"
         private const val DEFAULT_LAUNCHER_BLUR_RADIUS_PX = 34f
-        private const val MAX_LAUNCHER_BLUR_RADIUS_PX = 100f
+        private const val MAX_LAUNCHER_BLUR_RADIUS_PX = 175f
         private val SYSTEM = AxBackdropBlurSettingsSpec(
             enabledKey = null,
-            radiusKey = KEY_SYSTEM_BLUR_RADIUS,
+            radiusKey = KEY_SYSTEM_BLUR_RADIUS_PCT,
             defaultEnabled = true,
             defaultRadiusPx = null,
             maxRadiusPx = null,
+            radiusInPercent = true,
         )
 
         @JvmStatic
@@ -47,12 +49,13 @@ data class AxBackdropBlurSettingsSpec internal constructor(
             defaultRadiusPx: Float = DEFAULT_LAUNCHER_BLUR_RADIUS_PX,
             maxRadiusPx: Float = MAX_LAUNCHER_BLUR_RADIUS_PX,
         ): AxBackdropBlurSettingsSpec {
-            return secure(
+            return AxBackdropBlurSettingsSpec(
                 enabledKey = KEY_LAUNCHER_BLUR_ENABLED,
-                radiusKey = KEY_LAUNCHER_BLUR_RADIUS,
+                radiusKey = KEY_LAUNCHER_BLUR_RADIUS_PCT,
                 defaultEnabled = false,
                 defaultRadiusPx = defaultRadiusPx,
                 maxRadiusPx = maxRadiusPx,
+                radiusInPercent = true,
             )
         }
 
@@ -70,6 +73,7 @@ data class AxBackdropBlurSettingsSpec internal constructor(
                 defaultEnabled = defaultEnabled,
                 defaultRadiusPx = defaultRadiusPx,
                 maxRadiusPx = maxRadiusPx,
+                radiusInPercent = false,
             )
         }
     }

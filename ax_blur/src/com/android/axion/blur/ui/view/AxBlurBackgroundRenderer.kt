@@ -91,6 +91,10 @@ class AxBlurBackgroundRenderer @JvmOverloads constructor(
         blur.setCrossWindowBlurEnabled(enabled)
     }
 
+    fun setRequireWindowFocus(require: Boolean) {
+        blur.setRequireWindowFocus(require)
+    }
+
     fun setSurfaceAlpha(alpha: Int) {
         surfaceAlpha = alpha.coerceIn(0, 255)
         blur.setSurfaceAlpha(surfaceAlpha)
@@ -114,6 +118,14 @@ class AxBlurBackgroundRenderer @JvmOverloads constructor(
 
     fun refreshSourceBlur() {
         blur.refreshSourceBlur()
+    }
+
+    fun captureSourceBlur(source: View, vararg excludedViews: View?): Boolean {
+        return blur.captureSourceBlur(source, *excludedViews)
+    }
+
+    fun releaseSourceBlur() {
+        blur.releaseSourceBlur()
     }
 
     fun clear(target: View?) {
@@ -287,7 +299,9 @@ class AxBlurBackgroundRenderer @JvmOverloads constructor(
             return AxBlurBackgroundRenderer(
                 view,
                 AxBackdropBlurSettingsSpec.launcher(defaultRadiusPx),
-            )
+            ).apply {
+                setRequireWindowFocus(true)
+            }
         }
     }
 

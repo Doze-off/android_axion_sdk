@@ -368,6 +368,11 @@ class AxBackdropBlurRenderer @JvmOverloads constructor(
 
         if (preferSourceBlur) {
             val drewCrossWindow = drawCrossWindowBlur(canvas)
+            if (drewCrossWindow && shouldUseCrossWindowBlur()) {
+                if (sourceBlurRecorded) discardSourceBlur()
+                drawColor(canvas, backdropTintColor)
+                return
+            }
             val drewSource = drawSourceBlur(canvas)
             if (drewSource) return
             if (drewCrossWindow) {
@@ -462,6 +467,17 @@ class AxBackdropBlurRenderer @JvmOverloads constructor(
             blurNode.discardDisplayList()
         }
         return recorded
+    }
+
+    private fun shouldUseCrossWindowBlur(): Boolean {
+        val root = view.rootView
+        val rootArea = areaOf(root.width, root.height)
+        return rootArea > 0 && areaOf(view.width, view.height) >= rootArea / 2
+    }
+
+    private fun areaOf(width: Int, height: Int): Long {
+        if (width <= 0 || height <= 0) return 0L
+        return width.toLong() * height.toLong()
     }
 
     private fun sourceGeometry(source: View): SourceGeometry {
