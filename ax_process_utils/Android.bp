@@ -9,10 +9,20 @@ cc_library_static {
 
     export_include_dirs: ["include"],
 
-    shared_libs: ["liblog", "libbase"],
+    shared_libs: ["liblog", "libbase", "libprocessgroup"],
+
+    header_libs: ["libcutils_headers", "libsystem_headers"],
+
+    export_shared_lib_headers: ["libprocessgroup"],
 
     cflags: ["-Wall", "-Werror", "-fvisibility=hidden"],
 
     host_supported: false,
+    vendor_available: true,
+    apex_available: [
+        "//apex_available:platform",
+        "//apex_available:anyapex",
+    ],
+    min_sdk_version: "29",
     visibility: ["//visibility:public"],
 }
