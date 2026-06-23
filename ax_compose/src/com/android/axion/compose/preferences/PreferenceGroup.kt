@@ -143,25 +143,50 @@ fun PreferenceGroup(
             }
         }
 
-        AnimatedVisibility(
-            visible = !collapsible || expanded,
-            enter = expandVertically() + fadeIn(),
-            exit = shrinkVertically() + fadeOut(),
-        ) {
-            Column(
-                verticalArrangement = Arrangement.spacedBy(1.dp)
+        if (collapsible) {
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically() + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
             ) {
-                items.forEachIndexed { index, composable ->
-                    val position = when {
-                        items.size == 1 -> PreferencePosition.Single
-                        index == 0 -> if (collapsible && title != null) PreferencePosition.Middle else PreferencePosition.Top
-                        index == items.size - 1 -> PreferencePosition.Bottom
-                        else -> PreferencePosition.Middle
-                    }
-                    CompositionLocalProvider(LocalPreferencePosition provides position) {
-                        composable()
-                    }
+                PreferenceGroupContent(
+                    items = items,
+                    collapsible = true,
+                    hasTitle = title != null,
+                )
+            }
+        } else {
+            PreferenceGroupContent(
+                items = items,
+                collapsible = false,
+                hasTitle = title != null,
+            )
+        }
+    }
+}
+
+@Composable
+private fun PreferenceGroupContent(
+    items: List<@Composable () -> Unit>,
+    collapsible: Boolean,
+    hasTitle: Boolean,
+) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(1.dp)
+    ) {
+        items.forEachIndexed { index, composable ->
+            val position = when {
+                items.size == 1 -> PreferencePosition.Single
+                index == 0 -> if (collapsible && hasTitle) {
+                    PreferencePosition.Middle
+                } else {
+                    PreferencePosition.Top
                 }
+                index == items.size - 1 -> PreferencePosition.Bottom
+                else -> PreferencePosition.Middle
+            }
+            CompositionLocalProvider(LocalPreferencePosition provides position) {
+                composable()
             }
         }
     }
