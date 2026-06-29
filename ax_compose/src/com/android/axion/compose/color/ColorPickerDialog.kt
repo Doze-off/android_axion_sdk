@@ -297,12 +297,11 @@ private fun ColorPresetChip(
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(
-                modifier = Modifier
-                    .size(PresetSwatchSize)
-                    .clip(CircleShape)
-                    .background(preset.color)
-                    .border(1.dp, colors.outlineVariant, CircleShape),
+            AxColorSwatch(
+                color = preset.color,
+                selected = false,
+                size = PresetSwatchSize,
+                contentInset = 0.dp,
             )
             Spacer(modifier = Modifier.width(8.dp))
             Text(
