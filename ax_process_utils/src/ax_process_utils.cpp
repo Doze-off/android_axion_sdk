@@ -139,9 +139,6 @@ void CpuTopology::Init() {
     std::string big_str =
             android::base::GetProperty("persist.sys.axion_cpu_big", "");
     if (big_str.empty()) {
-        big_str = android::base::GetProperty("persist.sys.axion_cpu_svp", "");
-    }
-    if (big_str.empty()) {
         big_str = DeriveCpusByCapacity(false);
     }
     if (big_str.empty()) {
