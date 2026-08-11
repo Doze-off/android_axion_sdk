@@ -48,6 +48,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 
 interface PreferenceGroupScope {
@@ -71,6 +72,7 @@ fun PreferenceGroup(
     title: String? = null,
     collapsible: Boolean = false,
     initiallyExpanded: Boolean = true,
+    spacing: Dp = 1.dp,
     content: PreferenceGroupScope.() -> Unit
 ) {
     val scope = PreferenceGroupScopeImpl()
@@ -153,6 +155,7 @@ fun PreferenceGroup(
                     items = items,
                     collapsible = true,
                     hasTitle = title != null,
+                    spacing = spacing,
                 )
             }
         } else {
@@ -160,6 +163,7 @@ fun PreferenceGroup(
                 items = items,
                 collapsible = false,
                 hasTitle = title != null,
+                spacing = spacing,
             )
         }
     }
@@ -170,21 +174,18 @@ private fun PreferenceGroupContent(
     items: List<@Composable () -> Unit>,
     collapsible: Boolean,
     hasTitle: Boolean,
+    spacing: Dp,
 ) {
     Column(
-        verticalArrangement = Arrangement.spacedBy(1.dp)
+        verticalArrangement = Arrangement.spacedBy(spacing)
     ) {
         items.forEachIndexed { index, composable ->
-            val position = when {
-                items.size == 1 -> PreferencePosition.Single
-                index == 0 -> if (collapsible && hasTitle) {
-                    PreferencePosition.Middle
-                } else {
-                    PreferencePosition.Top
-                }
-                index == items.size - 1 -> PreferencePosition.Bottom
-                else -> PreferencePosition.Middle
-            }
+            val position =
+                preferencePosition(
+                    index = index,
+                    count = items.size,
+                    firstIsMiddle = collapsible && hasTitle,
+                )
             CompositionLocalProvider(LocalPreferencePosition provides position) {
                 composable()
             }
