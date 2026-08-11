@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-package com.android.axion.blur.model
+package com.android.axion.blur.settings
 
 internal data class AxBackdropBlurSettingsModel(
     val enabled: Boolean,

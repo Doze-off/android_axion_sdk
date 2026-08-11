@@ -3,7 +3,6 @@
     xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:androidprv="http://schemas.android.com/apk/prv/res/android">
     <color name="ax_blur_surface_effect_0">@androidprv:color/surface_effect_0</color>
-    <color name="ax_blur_surface_effect_1">@androidprv:color/surface_effect_1</color>
     <color name="ax_blur_surface_effect_2">@androidprv:color/surface_effect_2</color>
     <color name="ax_blur_surface_effect_3">@androidprv:color/surface_effect_3</color>
     <color name="ax_blur_fallback">@androidprv:color/materialColorSurfaceContainer</color>

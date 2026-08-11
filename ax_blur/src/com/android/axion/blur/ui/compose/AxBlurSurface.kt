@@ -62,8 +62,8 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.isSpecified
 import androidx.compose.ui.unit.toSize
-import com.android.axion.blur.model.AxBackdropBlurSettingsSpec
-import com.android.axion.blur.ui.view.AxViewBackdropBlur
+import com.android.axion.blur.BlurEngine
+import com.android.axion.blur.settings.AxBackdropBlurSettingsSpec
 import com.android.axion.kotlin.settings.SettingsFlow
 import com.android.axion.kotlin.settings.SettingsType
 import kotlin.math.roundToInt
@@ -146,6 +146,7 @@ fun AxBlurSurface(
     tintColor: Color? = null,
     settingsSpec: AxBackdropBlurSettingsSpec = AxBackdropBlurSettingsSpec.system(),
     contentAlignment: Alignment = Alignment.TopStart,
+    alpha: Float = 1f,
     content: @Composable BoxScope.() -> Unit = {},
 ) {
     val resolvedSurfaceColor = surfaceColor ?: AxBlurSurfaceDefaults.surfaceColor()
@@ -159,6 +160,7 @@ fun AxBlurSurface(
                 tintColor = resolvedTintColor,
                 cornerRadius = cornerRadius,
                 settingsSpec = settingsSpec,
+                alpha = alpha,
             ),
         contentAlignment = contentAlignment,
         content = content,
@@ -172,12 +174,13 @@ fun Modifier.axBlurBackground(
     tintColor: Color,
     cornerRadius: Dp = Dp.Unspecified,
     settingsSpec: AxBackdropBlurSettingsSpec = AxBackdropBlurSettingsSpec.system(),
+    alpha: Float = 1f,
 ): Modifier {
     val density = LocalDensity.current
     val view = LocalView.current
     val blurEnabled = LocalAxBlurEnabled.current && enabled
     val blur = remember(view, settingsSpec) {
-        AxViewBackdropBlur(view).apply {
+        BlurEngine(view).apply {
             useSettings(settingsSpec)
             setEnabled(blurEnabled)
         }
@@ -188,12 +191,10 @@ fun Modifier.axBlurBackground(
     } else {
         Float.NaN
     }
+    val blurAlpha = (alpha.coerceIn(0f, 1f) * 255).toInt()
 
     DisposableEffect(blur) {
-        blur.onAttachedToWindow()
-        onDispose {
-            blur.onDetachedFromWindow()
-        }
+        onDispose(blur::dispose)
     }
 
     SideEffect {
@@ -209,8 +210,9 @@ fun Modifier.axBlurBackground(
             size.minDimension * 0.5f
         }
         val drewBlur = if (blurEnabled && width > 0 && height > 0) {
-            var result = false
+            blur.setAlpha(blurAlpha)
             blur.setOverlayColor(tintArgb)
+            var result = false
             drawIntoCanvas { canvas ->
                 result = blur.draw(
                     canvas.nativeCanvas,

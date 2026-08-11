@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.axion.blur.model
+package com.android.axion.blur.settings
 
 data class AxBackdropBlurSettingsSpec internal constructor(
     internal val enabledKey: String?,
@@ -52,7 +52,7 @@ data class AxBackdropBlurSettingsSpec internal constructor(
             return AxBackdropBlurSettingsSpec(
                 enabledKey = KEY_LAUNCHER_BLUR_ENABLED,
                 radiusKey = KEY_LAUNCHER_BLUR_RADIUS_PCT,
-                defaultEnabled = false,
+                defaultEnabled = true,
                 defaultRadiusPx = defaultRadiusPx,
                 maxRadiusPx = maxRadiusPx,
                 radiusInPercent = true,

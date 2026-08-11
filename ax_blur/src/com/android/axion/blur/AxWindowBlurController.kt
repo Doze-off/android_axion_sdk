@@ -16,7 +16,6 @@
 
 package com.android.axion.blur
 
-import android.app.Dialog
 import android.content.Context
 import android.graphics.Color
 import android.graphics.Outline
@@ -27,8 +26,8 @@ import android.view.View
 import android.view.ViewTreeObserver
 import android.view.Window
 import android.view.WindowManager
-import com.android.axion.blur.domain.interactor.AxBackdropBlurInteractor
-import com.android.axion.blur.model.AxBackdropBlurSettingsModel
+import com.android.axion.blur.settings.AxBackdropBlurInteractor
+import com.android.axion.blur.settings.AxBackdropBlurSettingsModel
 import com.android.internal.graphics.drawable.BackgroundBlurDrawable
 import kotlin.math.roundToInt
 
@@ -313,39 +312,6 @@ class AxWindowBlurController @JvmOverloads constructor(
                 blurBehindRadiusScale,
                 surfaceAlpha,
             ).apply()
-        }
-
-        @JvmStatic
-        @JvmOverloads
-        fun attach(
-            dialog: Dialog,
-            blurBehind: Boolean = false,
-            blurBehindRadiusScale: Float = DEFAULT_BLUR_BEHIND_RADIUS_SCALE,
-            surfaceAlpha: Int = DEFAULT_SURFACE_ALPHA,
-        ): AxWindowBlurController {
-            val window = dialog.window!!
-            val controller = AxWindowBlurController(
-                window,
-                dialog.context,
-                blurBehind,
-                blurBehindRadiusScale,
-                surfaceAlpha,
-            )
-            val decorView = window.decorView
-            decorView.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
-                override fun onViewAttachedToWindow(view: View) {
-                    controller.start()
-                }
-
-                override fun onViewDetachedFromWindow(view: View) {
-                    controller.detach()
-                    view.removeOnAttachStateChangeListener(this)
-                }
-            })
-            if (decorView.isAttachedToWindow) {
-                controller.start()
-            }
-            return controller
         }
     }
 

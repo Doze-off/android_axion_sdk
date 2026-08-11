@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.android.axion.blur.data.repository
+package com.android.axion.blur.settings
 
 import android.content.Context
 import android.os.Handler
@@ -22,8 +22,6 @@ import android.os.UserHandle
 import android.provider.Settings
 import com.android.axion.blur.AxBlurProperties
 import com.android.axion.blur.R
-import com.android.axion.blur.model.AxBackdropBlurSettingsSpec
-import com.android.axion.blur.model.AxBackdropBlurSettingsSubscription
 import com.android.axion.kotlin.settings.SettingsFlow
 import com.android.axion.kotlin.settings.SettingsType
 import kotlinx.coroutines.CoroutineScope
