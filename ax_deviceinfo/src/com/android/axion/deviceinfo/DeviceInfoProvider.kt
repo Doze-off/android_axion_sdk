@@ -213,12 +213,21 @@ object DeviceInfoProvider {
     }
 
     fun getBatteryCapacity(context: Context): String {
-        val batteryIntent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))
-        val designCapacityUah = batteryIntent?.getIntExtra(BatteryManager.EXTRA_DESIGN_CAPACITY, -1) ?: -1
-        val capacityMah = if (designCapacityUah > 0) {
-            designCapacityUah / 1000
+        val batteryIntent = context.registerReceiver(
+            null,
+            IntentFilter(Intent.ACTION_BATTERY_CHANGED)
+        )
+        val designCapacityMah = batteryIntent?.getLongExtra(
+            BatteryManager.EXTRA_DESIGN_CAPACITY,
+            -1L
+        ) ?: -1L
+        val capacityMah = if (designCapacityMah > 0L) {
+            designCapacityMah
         } else {
-            PowerProfile(context).getAveragePower(PowerProfile.POWER_BATTERY_CAPACITY).roundToInt()
+            PowerProfile(context)
+            .getAveragePower(PowerProfile.POWER_BATTERY_CAPACITY)
+            .roundToInt()
+            .toLong()
         }
         return "$capacityMah mAh"
     }
