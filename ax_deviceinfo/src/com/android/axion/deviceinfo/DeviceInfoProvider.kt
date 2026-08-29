@@ -29,6 +29,7 @@ import android.os.SystemProperties
 import android.os.storage.StorageManager
 import android.provider.Settings
 import android.view.Display
+import android.graphics.ImageFormat
 import com.android.internal.os.PowerProfile
 import com.android.internal.util.MemInfoReader
 import com.android.settingslib.deviceinfo.PrivateStorageInfo
@@ -236,20 +237,23 @@ object DeviceInfoProvider {
     }
 
     fun getFrontCameraMegapixels(context: Context): String {                                             
-      val frontCameraInfo = SystemProperties.get("persist.sys.device_camera_info_front", "")
-      if (frontCameraInfo.isNotEmpty()) {
-          return frontCameraInfo.split(",").joinToString(" + ") { "${it}MP" }
-      }
-                                                                                                    
-      val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
-      val frontList = mutableListOf<String>()                                                          
-      for (cameraId in cameraManager.cameraIdList) {                                                      
-          val characteristics = cameraManager.getCameraCharacteristics(cameraId)                          
-          val facing = characteristics.get(CameraCharacteristics.LENS_FACING)                             
-          if (facing == CameraCharacteristics.LENS_FACING_FRONT) {                                             
-              frontList.add(formatMegapixels(getCameraMegapixels(characteristics)))
-          }
-      }
+        val frontCameraInfo = SystemProperties.get("persist.sys.device_camera_info_front", "")
+        if (frontCameraInfo.isNotEmpty()) {
+            return frontCameraInfo.split(",").joinToString(" + ") { "${it}MP" }
+        }
+        
+        val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+        val frontList = mutableListOf<String>()                                                          
+        for (cameraId in cameraManager.cameraIdList) {                                                      
+            val characteristics = cameraManager.getCameraCharacteristics(cameraId)                          
+            val facing = characteristics.get(CameraCharacteristics.LENS_FACING)                             
+            if (facing == CameraCharacteristics.LENS_FACING_FRONT) {                                             
+                val megapixels = getCameraMegapixels(characteristics)
+                if (megapixels > 0) {
+                    frontList.add(formatMegapixels(megapixels))
+                }
+            }
+        }
       return if (frontList.isNotEmpty()) frontList.joinToString(" + ") else "N/A"
     }
 
@@ -266,13 +270,49 @@ object DeviceInfoProvider {
             val characteristics = cameraManager.getCameraCharacteristics(cameraId)
             val facing = characteristics.get(CameraCharacteristics.LENS_FACING)
             if (facing == CameraCharacteristics.LENS_FACING_BACK) {
-                rearList.add(formatMegapixels(getCameraMegapixels(characteristics)))
+                val megapixels = getCameraMegapixels(characteristics)
+                if (megapixels > 0) {
+                    rearList.add(formatMegapixels(megapixels))
             }
         }
+    }
         return if (rearList.isNotEmpty()) rearList.joinToString(" + ") else "N/A"
     }
 
     private fun getCameraMegapixels(characteristics: CameraCharacteristics): Double {
+        val configs = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP)
+        if (configs != null) {
+            var maxPixels = 0L
+            
+            val jpegSizes = configs.getOutputSizes(ImageFormat.JPEG)
+            if (jpegSizes != null) {
+                for (size in jpegSizes) {
+                    val pixels = size.width.toLong() * size.height.toLong()
+                    if (pixels > maxPixels) maxPixels = pixels
+                }
+            }
+            
+            val yuvSizes = configs.getOutputSizes(ImageFormat.YUV_420_888)
+            if (yuvSizes != null) {
+                for (size in yuvSizes) {
+                    val pixels = size.width.toLong() * size.height.toLong()
+                    if (pixels > maxPixels) maxPixels = pixels
+                }
+            }
+            
+            val rawSizes = configs.getOutputSizes(ImageFormat.RAW_SENSOR)
+            if (rawSizes != null) {
+                for (size in rawSizes) {
+                    val pixels = size.width.toLong() * size.height.toLong()
+                    if (pixels > maxPixels) maxPixels = pixels
+                }
+            }
+            
+            if (maxPixels > 0) {
+                return maxPixels.toDouble() / 1_000_000.0
+            }
+        }
+        
         val sensorSize = characteristics.get(CameraCharacteristics.SENSOR_INFO_PIXEL_ARRAY_SIZE)
         if (sensorSize != null) {
             val totalPixels = sensorSize.width.toLong() * sensorSize.height.toLong()
